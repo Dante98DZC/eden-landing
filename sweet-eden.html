@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Sweet Eden</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="base.css" />
+</head>
+<body>
+<div id="app"></div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script>
+const {useState,useEffect,useRef,useCallback}=React;
+const h=React.createElement;
+
+// ── Initial Data ────────────────────────────────────────────
+const INITIAL_PRODUCTS=[
+  {id:1,name:"Trufas de Chocolate Belga",category:"Trufas",price:"RD$350",desc:"Trufas artesanales elaboradas con chocolate belga 70%, cubiertas en cacao puro. Pack de 6 unidades.",emoji:"🍫",featured:true,imageUrl:""},
+  {id:2,name:"Macarons Franceses",category:"Macarons",price:"RD$280",desc:"Macarons clásicos en colores pastel. Sabores: vainilla, fresa y lavanda. Pack de 4.",emoji:"🌸",featured:false,imageUrl:""},
+  {id:3,name:"Cake Pops de Terciopelo Rojo",category:"Cake Pops",price:"RD$180",desc:"Cake pops de red velvet con cobertura de chocolate blanco decorado. Unidad.",emoji:"🍭",featured:true,imageUrl:""},
+  {id:4,name:"Galletas Decoradas",category:"Galletas",price:"RD$120",desc:"Galletas de mantequilla decoradas con glasa real. Diseños personalizables. Unidad.",emoji:"🍪",featured:false,imageUrl:""},
+  {id:5,name:"Brownie Gourmet",category:"Brownies",price:"RD$220",desc:"Brownie de chocolate intenso con nueces pecanas y caramelo salado. Porción.",emoji:"🟫",featured:true,imageUrl:""},
+  {id:6,name:"Box de Dulces Mixta",category:"Cajas",price:"RD$1,200",desc:"Caja regalo con selección de nuestros mejores dulces. Perfecta para regalo.",emoji:"🎁",featured:false,imageUrl:""},
+];
+const INITIAL_NEWS=[
+  {id:1,date:"20 Mar 2025",title:"¡Nuevos sabores de primavera disponibles!",text:"Incorporamos 4 nuevos sabores de macarons inspirados en flores de temporada. ¡Disponibles en pedidos desde hoy!",imageUrl:""},
+  {id:2,date:"10 Mar 2025",title:"Pedidos para bodas y eventos",text:"Ahora ofrecemos servicio completo para bodas, baby showers y cumpleaños. Personaliza tu orden con anticipación.",imageUrl:""},
+  {id:3,date:"01 Mar 2025",title:"Temporada de Semana Santa",text:"Prepara tus pedidos con tiempo para Semana Santa. Tenemos ediciones especiales de huevos de chocolate y dulces tradicionales.",imageUrl:""},
+];
+
+// ── Storage helpers ──────────────────────────────────────────
+function useLocalStorage(key,init){
+  const [val,setVal]=useState(()=>{
+    try{const s=localStorage.getItem(key);return s?JSON.parse(s):init}catch{return init}
+  });
+  useEffect(()=>{try{localStorage.setItem(key,JSON.stringify(val))}catch{}},[key,val]);
+  return [val,setVal];
+}
+
+// ── Toast ────────────────────────────────────────────────────
+function Toast({msg,onDone}){
+  useEffect(()=>{const t=setTimeout(onDone,2200);return()=>clearTimeout(t)},[]);
+  return h('div',{className:'toast'},msg);
+}
+
+// ── Category list ─────────────────────────────────────────────
+const CATS=["Todos","Trufas","Macarons","Cake Pops","Galletas","Brownies","Cajas"];
+
+// ── ProductCard ───────────────────────────────────────────────
+function ProductCard({p,onClick}){
+  return h('div',{className:'product-card',onClick:()=>onClick(p)},
+    p.imageUrl
+      ? h('img',{src:p.imageUrl,alt:p.name,className:'product-img',onError:e=>{e.target.style.display='none'}})
+      : h('div',{className:'product-img-placeholder'},p.emoji||'🍬'),
+    h('div',{className:'product-info'},
+      p.featured&&h('span',{className:'product-badge'},'★ Favorito'),
+      h('span',{className:'product-cat-tag'},p.category),
+      h('div',{className:'product-name'},p.name),
+      h('div',{className:'product-footer'},
+        h('span',{className:'product-price'},p.price),
+        h('button',{className:'product-order-btn',onClick:e=>{e.stopPropagation();window.open(`https://wa.me/18091234567?text=Hola! Me interesa pedir: ${p.name} (${p.price})`,'_blank')}},'Pedir')
+      )
+    )
+  );
+}
+
+// ── NewsCard ──────────────────────────────────────────────────
+function NewsCard({n}){
+  return h('div',{className:'news-card'},
+    h('div',{className:'news-accent'}),
+    h('div',{className:'news-body'},
+      h('div',{className:'news-date'},n.date),
+      h('div',{className:'news-title'},n.title),
+      h('div',{className:'news-text'},n.text)
+    ),
+    n.imageUrl&&h('img',{src:n.imageUrl,alt:n.title,className:'news-img'})
+  );
+}
+
+// ── ProductModal ──────────────────────────────────────────────
+function ProductModal({p,onClose}){
+  if(!p)return null;
+  return h('div',{className:'modal-overlay',onClick:onClose},
+    h('div',{className:'modal',onClick:e=>e.stopPropagation()},
+      h('div',{className:'modal-handle'}),
+      h('button',{className:'modal-close',onClick:onClose},'✕'),
+      p.imageUrl
+        ? h('img',{src:p.imageUrl,alt:p.name,className:'modal-img'})
+        : h('div',{className:'modal-img'},p.emoji||'🍬'),
+      h('span',{className:'product-cat-tag'},p.category),
+      h('div',{className:'modal-title'},p.name),
+      h('div',{className:'modal-price'},p.price),
+      h('div',{className:'modal-desc'},p.desc),
+      h('div',{className:'modal-actions'},
+        h('button',{className:'btn-primary',style:{flex:1},onClick:()=>window.open(`https://wa.me/18091234567?text=Hola! Me interesa pedir: ${p.name} (${p.price})`,'_blank')},'📱 Pedir por WhatsApp'),
+        h('button',{className:'btn-secondary',onClick:onClose},'Cerrar')
+      )
+    )
+  );
+}
+
+// ── PUBLIC SITE ───────────────────────────────────────────────
+function PublicSite({products,news,setPage}){
+  const [cat,setCat]=useState('Todos');
+  const [modal,setModal]=useState(null);
+  const filtered=cat==='Todos'?products:products.filter(p=>p.category===cat);
+  return h('div',null,
+    h('nav',null,
+      h('div',{className:'nav-inner'},
+        h('div',{className:'nav-logo'},'Sweet',h('span',null,' Eden')),
+        h('div',{className:'nav-links'},
+          h('button',{className:'nav-btn',onClick:()=>document.getElementById('productos')?.scrollIntoView({behavior:'smooth'})},'Dulces'),
+          h('button',{className:'nav-btn',onClick:()=>document.getElementById('noticias')?.scrollIntoView({behavior:'smooth'})},'Noticias'),
+          h('button',{className:'nav-btn',onClick:()=>setPage('login')},'Admin')
+        )
+      )
+    ),
+    h('section',{className:'hero'},
+      h('div',{className:'hero-tag'},'✦ Dulcería artesanal · Hecho con amor'),
+      h('h1',null,'Donde cada dulce es ',h('em',null,'una obra de arte')),
+      h('p',null,'Creamos experiencias dulces únicas, elaboradas a mano con los mejores ingredientes.'),
+      h('div',{className:'hero-actions'},
+        h('button',{className:'btn-primary',onClick:()=>document.getElementById('productos')?.scrollIntoView({behavior:'smooth'})},'Ver menú completo'),
+        h('button',{className:'btn-secondary',onClick:()=>window.open('https://wa.me/18091234567','_blank')},'📱 Hacer un pedido')
+      ),
+      h('div',{className:'hero-floats'},
+        h('div',{className:'hero-float'},h('span',{className:'hero-float-icon',style:{background:'#F5DCE1'}},'🚚'),'Entrega a domicilio'),
+        h('div',{className:'hero-float'},h('span',{className:'hero-float-icon',style:{background:'#F0E0C0'}},'🎁'),'Pedidos personalizados'),
+        h('div',{className:'hero-float'},h('span',{className:'hero-float-icon',style:{background:'#DCF5E8'}},'✨'),'100% artesanal')
+      )
+    ),
+    h('div',{id:'productos',className:'section'},
+      h('div',{className:'section-header'},
+        h('div',null,
+          h('div',{className:'section-subtitle'},'Nuestros dulces'),
+          h('div',{className:'section-title'},'El menú')
+        )
+      ),
+      h('div',{className:'cats'},
+        CATS.map(c=>h('button',{key:c,className:'cat-btn'+(cat===c?' active':''),onClick:()=>setCat(c)},c))
+      ),
+      filtered.length===0
+        ? h('div',{className:'empty'},h('div',{className:'empty-icon'},'🍬'),h('div',{className:'empty-text'},'Sin productos en esta categoría'))
+        : h('div',{className:'products-grid'},filtered.map(p=>h(ProductCard,{key:p.id,p,onClick:setModal})))
+    ),
+    h('div',{id:'noticias',className:'section'},
+      h('div',{className:'section-header'},
+        h('div',null,
+          h('div',{className:'section-subtitle'},'Novedades'),
+          h('div',{className:'section-title'},'Noticias')
+        )
+      ),
+      news.length===0
+        ? h('div',{className:'empty'},h('div',{className:'empty-icon'},'📰'),h('div',{className:'empty-text'},'Sin noticias por ahora'))
+        : h('div',{className:'news-list'},news.map(n=>h(NewsCard,{key:n.id,n})))
+    ),
+    h('div',{className:'contact-strip'},
+      h('h2',null,'¿Lista para ordenar?'),
+      h('p',null,'Escríbenos directamente y creamos tu pedido especial'),
+      h('div',{className:'contact-buttons'},
+        h('button',{className:'contact-btn',onClick:()=>window.open('https://wa.me/18091234567','_blank')},'💬 WhatsApp'),
+        h('button',{className:'contact-btn',onClick:()=>window.open('https://instagram.com/sweeteden','_blank')},'📷 Instagram')
+      )
+    ),
+    h('footer',null,h('strong',null,'Sweet Eden'),' · Dulcería artesanal · © 2025'),
+    modal&&h(ProductModal,{p:modal,onClose:()=>setModal(null)})
+  );
+}
+
+// ── LOGIN ─────────────────────────────────────────────────────
+function Login({setPage}){
+  const [user,setUser]=useState('');
+  const [pass,setPass]=useState('');
+  const [err,setErr]=useState('');
+  const submit=()=>{
+    if(user==='admin'&&pass==='123'){setPage('admin');setErr('');}
+    else setErr('Usuario o contraseña incorrectos');
+  };
+  return h('div',{className:'login-wrap'},
+    h('div',{className:'login-card'},
+      h('div',{className:'login-logo'},'Sweet Eden'),
+      h('div',{className:'login-sub'},'Panel de administración'),
+      err&&h('div',{className:'login-error'},err),
+      h('div',{className:'form-group'},
+        h('label',{className:'form-label'},'Usuario'),
+        h('input',{className:'form-input',value:user,onChange:e=>setUser(e.target.value),placeholder:'admin'})
+      ),
+      h('div',{className:'form-group'},
+        h('label',{className:'form-label'},'Contraseña'),
+        h('input',{className:'form-input',type:'password',value:pass,onChange:e=>setPass(e.target.value),onKeyDown:e=>e.key==='Enter'&&submit(),placeholder:'••••••••'})
+      ),
+      h('button',{className:'btn-save',style:{width:'100%'},onClick:submit},'Entrar'),
+      h('div',{style:{textAlign:'center',marginTop:'1rem'}},
+        h('button',{className:'btn-cancel',onClick:()=>setPage('home')},'← Volver al sitio')
+      )
+    ),
+    h('p',{style:{textAlign:'center',fontSize:'11px',color:'#9A8F8A',marginTop:'1rem'}},'Demo: admin / sweeteden2025')
+  );
+}
+
+// ── PRODUCT FORM ───────────────────────────────────────────────
+function ProductForm({item,onSave,onCancel}){
+  const blank={id:null,name:'',category:'Trufas',price:'',desc:'',emoji:'🍬',featured:false,imageUrl:''};
+  const [f,setF]=useState(item||blank);
+  const set=(k,v)=>setF(p=>({...p,[k]:v}));
+  return h('div',null,
+    h('div',{className:'form-row'},
+      h('div',{className:'form-group'},
+        h('label',{className:'form-label'},'Nombre'),
+        h('input',{className:'form-input',value:f.name,onChange:e=>set('name',e.target.value),placeholder:'Nombre del producto'})
+      ),
+      h('div',{className:'form-group'},
+        h('label',{className:'form-label'},'Precio'),
+        h('input',{className:'form-input',value:f.price,onChange:e=>set('price',e.target.value),placeholder:'RD$000'})
+      )
+    ),
+    h('div',{className:'form-row'},
+      h('div',{className:'form-group'},
+        h('label',{className:'form-label'},'Categoría'),
+        h('select',{className:'form-select',value:f.category,onChange:e=>set('category',e.target.value)},
+          ["Trufas","Macarons","Cake Pops","Galletas","Brownies","Cajas"].map(c=>h('option',{key:c,value:c},c))
+        )
+      ),
+      h('div',{className:'form-group'},
+        h('label',{className:'form-label'},'Emoji (icono)'),
+        h('input',{className:'form-input',value:f.emoji,onChange:e=>set('emoji',e.target.value),placeholder:'🍬'})
+      )
+    ),
+    h('div',{className:'form-group'},
+      h('label',{className:'form-label'},'URL de imagen (opcional)'),
+      h('input',{className:'form-input',value:f.imageUrl,onChange:e=>set('imageUrl',e.target.value),placeholder:'https://...'})
+    ),
+    h('div',{className:'form-group'},
+      h('label',{className:'form-label'},'Descripción'),
+      h('textarea',{className:'form-textarea',value:f.desc,onChange:e=>set('desc',e.target.value),placeholder:'Describe el producto...'})
+    ),
+    h('div',{style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'1rem'}},
+      h('input',{type:'checkbox',id:'featured',checked:f.featured,onChange:e=>set('featured',e.target.checked),style:{accentColor:'#C9667A'}}),
+      h('label',{htmlFor:'featured',style:{fontSize:'13px',color:'#6B4C3B'}},'Marcar como favorito')
+    ),
+    h('div',{className:'form-actions'},
+      h('button',{className:'btn-save',onClick:()=>onSave(f)},'Guardar'),
+      h('button',{className:'btn-cancel',onClick:onCancel},'Cancelar')
+    )
+  );
+}
+
+// ── NEWS FORM ─────────────────────────────────────────────────
+function NewsForm({item,onSave,onCancel}){
+  const blank={id:null,date:'',title:'',text:'',imageUrl:''};
+  const [f,setF]=useState(item||{...blank,date:new Date().toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})});
+  const set=(k,v)=>setF(p=>({...p,[k]:v}));
+  return h('div',null,
+    h('div',{className:'form-row'},
+      h('div',{className:'form-group'},
+        h('label',{className:'form-label'},'Fecha'),
+        h('input',{className:'form-input',value:f.date,onChange:e=>set('date',e.target.value)})
+      ),
+      h('div',{className:'form-group'},
+        h('label',{className:'form-label'},'URL imagen (opcional)'),
+        h('input',{className:'form-input',value:f.imageUrl,onChange:e=>set('imageUrl',e.target.value),placeholder:'https://...'})
+      )
+    ),
+    h('div',{className:'form-group'},
+      h('label',{className:'form-label'},'Título'),
+      h('input',{className:'form-input',value:f.title,onChange:e=>set('title',e.target.value),placeholder:'Título de la noticia'})
+    ),
+    h('div',{className:'form-group'},
+      h('label',{className:'form-label'},'Contenido'),
+      h('textarea',{className:'form-textarea',value:f.text,onChange:e=>set('text',e.target.value),placeholder:'Texto de la noticia...'})
+    ),
+    h('div',{className:'form-actions'},
+      h('button',{className:'btn-save',onClick:()=>onSave(f)},'Guardar'),
+      h('button',{className:'btn-cancel',onClick:onCancel},'Cancelar')
+    )
+  );
+}
+
+// ── ADMIN PANEL ───────────────────────────────────────────────
+function Admin({products,setProducts,news,setNews,setPage}){
+  const [tab,setTab]=useState('products');
+  const [editP,setEditP]=useState(null);
+  const [editN,setEditN]=useState(null);
+  const [showFormP,setShowFormP]=useState(false);
+  const [showFormN,setShowFormN]=useState(false);
+  const [toast,setToast]=useState('');
+
+  const showToast=msg=>{setToast(msg);setTimeout(()=>setToast(''),2300)};
+
+  const saveProduct=f=>{
+    if(!f.name||!f.price){showToast('⚠ Completa nombre y precio');return}
+    if(f.id){setProducts(ps=>ps.map(p=>p.id===f.id?f:p));showToast('✓ Producto actualizado')}
+    else{setProducts(ps=>[...ps,{...f,id:Date.now()}]);showToast('✓ Producto agregado')}
+    setEditP(null);setShowFormP(false);
+  };
+  const delProduct=id=>{if(confirm('¿Eliminar este producto?')){setProducts(ps=>ps.filter(p=>p.id!==id));showToast('Producto eliminado')}};
+
+  const saveNews=f=>{
+    if(!f.title){showToast('⚠ El título es requerido');return}
+    if(f.id){setNews(ns=>ns.map(n=>n.id===f.id?f:n));showToast('✓ Noticia actualizada')}
+    else{setNews(ns=>[{...f,id:Date.now()},...ns]);showToast('✓ Noticia publicada')}
+    setEditN(null);setShowFormN(false);
+  };
+  const delNews=id=>{if(confirm('¿Eliminar esta noticia?')){setNews(ns=>ns.filter(n=>n.id!==id));showToast('Noticia eliminada')}};
+
+  return h('div',null,
+    h('nav',null,
+      h('div',{className:'nav-inner'},
+        h('div',{className:'nav-logo'},'Sweet',h('span',null,' Eden')),
+        h('div',{className:'nav-links'},
+          h('button',{className:'nav-btn',onClick:()=>setPage('home')},'← Ver sitio')
+        )
+      )
+    ),
+    h('div',{className:'admin-wrap'},
+      h('div',{className:'admin-header'},
+        h('div',{className:'admin-title'},'Panel Admin'),
+        tab==='products'
+          ? h('button',{className:'btn-save',onClick:()=>{setEditP(null);setShowFormP(true)}},'+ Producto')
+          : h('button',{className:'btn-save',onClick:()=>{setEditN(null);setShowFormN(true)}},'+ Noticia')
+      ),
+      h('div',{className:'admin-tabs'},
+        h('button',{className:'admin-tab'+(tab==='products'?' active':''),onClick:()=>{setTab('products');setShowFormP(false);setShowFormN(false)}},'Productos ('+products.length+')'),
+        h('button',{className:'admin-tab'+(tab==='news'?' active':''),onClick:()=>{setTab('news');setShowFormP(false);setShowFormN(false)}},'Noticias ('+news.length+')')
+      ),
+
+      tab==='products'&&h('div',null,
+        (showFormP||editP)&&h('div',{style:{background:'var(--white)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'1.25rem',marginBottom:'1.25rem'}},
+          h('div',{style:{fontSize:'14px',fontWeight:'500',color:'var(--warm)',marginBottom:'1rem'}},editP?'Editar producto':'Nuevo producto'),
+          h(ProductForm,{item:editP,onSave:saveProduct,onCancel:()=>{setEditP(null);setShowFormP(false)}})
+        ),
+        h('div',{className:'admin-list'},
+          products.length===0&&h('div',{className:'empty'},h('div',{className:'empty-icon'},'🍬'),h('div',{className:'empty-text'},'Sin productos aún')),
+          products.map(p=>h('div',{key:p.id,className:'admin-item'},
+            h('div',{className:'admin-item-emoji'},p.imageUrl?h('img',{src:p.imageUrl,style:{width:'100%',height:'100%',objectFit:'cover',borderRadius:'6px'}}):p.emoji||'🍬'),
+            h('div',{className:'admin-item-info'},
+              h('div',{className:'admin-item-name'},p.name),
+              h('div',{className:'admin-item-sub'},p.category+(p.featured?' · ★ Favorito':''))
+            ),
+            h('div',{className:'admin-item-price'},p.price),
+            h('div',{className:'admin-actions'},
+              h('button',{className:'btn-edit',onClick:()=>{setEditP(p);setShowFormP(false)}},'Editar'),
+              h('button',{className:'btn-del',onClick:()=>delProduct(p.id)},'✕')
+            )
+          ))
+        )
+      ),
+
+      tab==='news'&&h('div',null,
+        (showFormN||editN)&&h('div',{style:{background:'var(--white)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'1.25rem',marginBottom:'1.25rem'}},
+          h('div',{style:{fontSize:'14px',fontWeight:'500',color:'var(--warm)',marginBottom:'1rem'}},editN?'Editar noticia':'Nueva noticia'),
+          h(NewsForm,{item:editN,onSave:saveNews,onCancel:()=>{setEditN(null);setShowFormN(false)}})
+        ),
+        h('div',{className:'admin-list'},
+          news.length===0&&h('div',{className:'empty'},h('div',{className:'empty-icon'},'📰'),h('div',{className:'empty-text'},'Sin noticias aún')),
+          news.map(n=>h('div',{key:n.id,className:'admin-item'},
+            h('div',{className:'admin-item-emoji'},'📰'),
+            h('div',{className:'admin-item-info'},
+              h('div',{className:'admin-item-name'},n.title),
+              h('div',{className:'admin-item-sub'},n.date)
+            ),
+            h('div',{className:'admin-actions'},
+              h('button',{className:'btn-edit',onClick:()=>{setEditN(n);setShowFormN(false)}},'Editar'),
+              h('button',{className:'btn-del',onClick:()=>delNews(n.id)},'✕')
+            )
+          ))
+        )
+      )
+    ),
+    toast&&h(Toast,{msg:toast,onDone:()=>setToast('')})
+  );
+}
+
+// ── ROOT APP ───────────────────────────────────────────────────
+function App(){
+  const [page,setPage]=useState('home');
+  const [products,setProducts]=useLocalStorage('se_products',INITIAL_PRODUCTS);
+  const [news,setNews]=useLocalStorage('se_news',INITIAL_NEWS);
+
+  if(page==='login') return h(Login,{setPage});
+  if(page==='admin') return h(Admin,{products,setProducts,news,setNews,setPage});
+  return h(PublicSite,{products,news,setPage});
+}
+
+ReactDOM.createRoot(document.getElementById('app')).render(h(App));
+</script>
+</body>
+</html>
