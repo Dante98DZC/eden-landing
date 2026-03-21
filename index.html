@@ -6,18 +6,41 @@
 <title>Sweet Eden</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="base.css" />
-<script src="https://unpkg.com/heroicons@2.0.18/24/outline/index.js" type="module"></script>
 </head>
 <body>
 <div id="app"></div>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-const {useState,useEffect,useRef,useCallback}=React;
+const {useState,useEffect}=React;
 const h=React.createElement;
 
-// ── Icon helper (Heroicons via CDN) ───────────────────────────
-function Icon({name,className,style}){
+// ── CONFIG ────────────────────────────────────────────────────
+const BIN_ID  = "69be0ee4b7ec241ddc8a64fc";
+const API_KEY = "$2a$10$F3p5c769IZ9e0wkqFuDBv.KD4cZqDraxm36tFfvBbg6NvEbtJXx1q";
+const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+const HEADERS = {
+  "Content-Type": "application/json",
+  "X-Master-Key": API_KEY,
+  "X-Bin-Versioning": "false"   // siempre sobreescribe, sin historial de versiones
+};
+
+async function loadData(){
+  const res = await fetch(BIN_URL+"/latest", {headers:{"X-Master-Key":API_KEY}});
+  const json = await res.json();
+  return json.record;
+}
+
+async function saveData(data){
+  await fetch(BIN_URL, {
+    method:"PUT",
+    headers: HEADERS,
+    body: JSON.stringify(data)
+  });
+}
+
+// ── Icon helper ───────────────────────────────────────────────
+function Icon({name,style}){
   const M={
     truck:'https://unpkg.com/heroicons@2.0.13/24/outline/truck.svg',
     sparkles:'https://unpkg.com/heroicons@2.0.13/24/outline/sparkles.svg',
@@ -25,53 +48,29 @@ function Icon({name,className,style}){
     document:'https://unpkg.com/heroicons@2.0.13/24/outline/document-text.svg',
     cake:'https://unpkg.com/heroicons@2.0.13/24/outline/cake.svg'
   };
-  return h('img',{src:M[name]||M.cake,alt:name,className:(className||''),style:Object.assign({width:'18px',height:'18px',display:'inline-block'},style||{})});
+  return h('img',{src:M[name]||M.cake,alt:name,style:Object.assign({width:'18px',height:'18px',display:'inline-block'},style||{})});
 }
 
-// ── Initial Data ────────────────────────────────────────────
-const INITIAL_PRODUCTS=[
-  {id:1,name:"Trufas de Chocolate Belga",category:"Trufas",price:"$350",desc:"Trufas artesanales elaboradas con chocolate belga 70%, cubiertas en cacao puro. Pack de 6 unidades.",featured:true,imageUrl:"Res/IMG-20250808-WA0018.jpg"},
-  {id:2,name:"Macarons Franceses",category:"Macarons",price:"$280",desc:"Macarons clásicos en colores pastel. Sabores: vainilla, fresa y lavanda. Pack de 4.",featured:false,imageUrl:"Res/IMG-20250811-WA0001.jpg"},
-  {id:3,name:"Cake Pops de Terciopelo Rojo",category:"Cake Pops",price:"$180",desc:"Cake pops de red velvet con cobertura de chocolate blanco decorado. Unidad.",featured:true,imageUrl:"Res/IMG-20250812-WA0040.jpg"},
-  {id:4,name:"Galletas Decoradas",category:"Galletas",price:"$120",desc:"Galletas de mantequilla decoradas con glasa real. Diseños personalizables. Unidad.",featured:false,imageUrl:"Res/IMG-20250916-WA0106.jpg"},
-  {id:5,name:"Brownie Gourmet",category:"Brownies",price:"$220",desc:"Brownie de chocolate intenso con nueces pecanas y caramelo salado. Porción.",featured:true,imageUrl:"Res/IMG-20251001-WA0343.jpg"},
-  {id:6,name:"Box de Dulces Mixta",category:"Cajas",price:"$1,200",desc:"Caja regalo con selección de nuestros mejores dulces. Perfecta para regalo.",featured:false,imageUrl:"Res/IMG-20251001-WA0347.jpg"},
-  {id:7,name:"Tartaletas de Frutas",category:"Tartas",price:"$450",desc:"Tartaletas individuales con frutas frescas de temporada y crema pastelera.",featured:false,imageUrl:"Res/IMG-20251015-WA0154.jpg"},
-  {id:8,name:"Cupcakes de Vainilla",category:"Cupcakes",price:"$150",desc:"Cupcakes esponjosos con buttercream de vainilla. Unidad.",featured:false,imageUrl:"Res/IMG-20251015-WA0156.jpg"},
-  {id:9,name:"Dulces Navideños",category:"Especiales",price:"$300",desc:"Selección especial de dulces para Navidad. Pack de 8 piezas.",featured:true,imageUrl:"Res/IMG-20251025-WA0006.jpg"},
-];
-const INITIAL_NEWS=[
-  {id:1,date:"20 Mar 2025",title:"¡Nuevos sabores de primavera disponibles!",text:"Incorporamos 4 nuevos sabores de macarons inspirados en flores de temporada. ¡Disponibles en pedidos desde hoy!",imageUrl:"Res/IMG-20251015-WA0154.jpg"},
-  {id:2,date:"10 Mar 2025",title:"Pedidos para bodas y eventos",text:"Ahora ofrecemos servicio completo para bodas, baby showers y cumpleaños. Personaliza tu orden con anticipación.",imageUrl:"Res/IMG-20251015-WA0156.jpg"},
-  {id:3,date:"01 Mar 2025",title:"Temporada de Semana Santa",text:"Prepara tus pedidos con tiempo para Semana Santa. Tenemos ediciones especiales de huevos de chocolate y dulces tradicionales.",imageUrl:"Res/IMG-20251025-WA0006.jpg"},
-  {id:4,date:"15 Feb 2025",title:"¡Feliz Día de los Enamorados!",text:"Descubre nuestros corazones de chocolate y cajas especiales para San Valentín. Haz tu pedido antes del 14 de febrero.",imageUrl:"Res/IMG-20260210-WA0010.jpg"},
-];
-
-// ── Storage helpers ──────────────────────────────────────────
-function useLocalStorage(key,init){
-  const [val,setVal]=useState(()=>{
-    try{const s=localStorage.getItem(key);return s?JSON.parse(s):init}catch{return init}
-  });
-  useEffect(()=>{try{localStorage.setItem(key,JSON.stringify(val))}catch{}},[key,val]);
-  return [val,setVal];
-}
-
-// ── Date helpers ─────────────────────────────────────────────
+// ── Date helpers ──────────────────────────────────────────────
 function formatDate(d){
-  try{
-    const dt=new Date(d);
-    if(isNaN(dt)) return d;
-    return dt.toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'});
-  }catch{return d}
+  try{const dt=new Date(d);if(isNaN(dt))return d;return dt.toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})}catch{return d}
 }
 function toISODate(d){
-  try{const dt=new Date(d);if(isNaN(dt)) return new Date().toISOString().slice(0,10);return dt.toISOString().slice(0,10)}catch{return new Date().toISOString().slice(0,10)}
+  try{const dt=new Date(d);if(isNaN(dt))return new Date().toISOString().slice(0,10);return dt.toISOString().slice(0,10)}catch{return new Date().toISOString().slice(0,10)}
 }
 
-// ── Toast ────────────────────────────────────────────────────
+// ── Toast ─────────────────────────────────────────────────────
 function Toast({msg,onDone}){
-  useEffect(()=>{const t=setTimeout(onDone,2200);return()=>clearTimeout(t)},[]);
+  useEffect(()=>{const t=setTimeout(onDone,2400);return()=>clearTimeout(t)},[]);
   return h('div',{className:'toast'},msg);
+}
+
+// ── Spinner ───────────────────────────────────────────────────
+function Spinner(){
+  return h('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'60vh',gap:'1rem',color:'var(--gray,#9A8F8A)'}},
+    h('div',{style:{width:'36px',height:'36px',border:'3px solid #F5DCE1',borderTopColor:'#C9667A',borderRadius:'50%',animation:'spin .7s linear infinite'}}),
+    h('span',{style:{fontSize:'13px'}},'Cargando...')
+  );
 }
 
 // ── Category list ─────────────────────────────────────────────
@@ -89,7 +88,10 @@ function ProductCard({p,onClick}){
       h('div',{className:'product-name'},p.name),
       h('div',{className:'product-footer'},
         h('span',{className:'product-price'},p.price),
-        h('button',{className:'product-order-btn',onClick:e=>{e.stopPropagation();window.open(`https://wa.me/18291234567?text=Hola! Me interesa pedir: ${p.name} (${p.price})`,'_blank')}},'Pedir')
+        h('button',{className:'product-order-btn',onClick:e=>{
+          e.stopPropagation();
+          window.open(`https://wa.me/18291234567?text=Hola! Me interesa pedir: ${p.name} (${p.price})`,'_blank');
+        }},'Pedir')
       )
     )
   );
@@ -147,13 +149,9 @@ function PublicSite({products,news,setPage}){
       )
     ),
     h('section',{className:'hero'},
-      h('div',{className:'hero-tag'},'✦ Dulcería artesanal · Hecho con amor'),
+      h('div',{className:'hero-tag'},' Dulcería artesanal ✦ Hecho con amor'),
       h('h1',null,'Donde cada dulce es ',h('em',null,'una obra de arte')),
       h('p',null,'Creamos experiencias dulces únicas, elaboradas a mano con los mejores ingredientes.'),
-      h('div',{className:'hero-actions'},
-        h('button',{className:'btn-primary',onClick:()=>document.getElementById('productos')?.scrollIntoView({behavior:'smooth'})},'Ver menú completo'),
-        h('button',{className:'btn-secondary',onClick:()=>window.open('https://wa.me/18291234567','_blank')},'📱 Hacer un pedido')
-      ),
       h('div',{className:'hero-floats'},
         h('div',{className:'hero-float'},h('span',{className:'hero-float-icon',style:{background:'#F5DCE1'}},h(Icon,{name:'truck'})),'Entrega a domicilio'),
         h('div',{className:'hero-float'},h('span',{className:'hero-float-icon',style:{background:'#F0E0C0'}},h(Icon,{name:'gift'})),'Pedidos personalizados'),
@@ -162,16 +160,13 @@ function PublicSite({products,news,setPage}){
     ),
     h('div',{id:'productos',className:'section'},
       h('div',{className:'section-header'},
-        h('div',null,
-          h('div',{className:'section-subtitle'},'Nuestros dulces'),
-          h('div',{className:'section-title'},'El menú')
-        )
+        h('div',{className:'section-title'},'Nuestras Ofertas')
       ),
       h('div',{className:'cats'},
         CATS.map(c=>h('button',{key:c,className:'cat-btn'+(cat===c?' active':''),onClick:()=>setCat(c)},c))
       ),
       filtered.length===0
-        ? h('div',{className:'empty'},h('div',{className:'empty-icon'},'🍬'),h('div',{className:'empty-text'},'Sin productos en esta categoría'))
+        ? h('div',{className:'empty'},h('div',{className:'empty-icon'},h(Icon,{name:'cake',style:{width:'48px',height:'48px'}})),h('div',{className:'empty-text'},'Sin productos en esta categoría'))
         : h('div',{className:'products-grid'},filtered.map(p=>h(ProductCard,{key:p.id,p,onClick:setModal})))
     ),
     h('div',{id:'noticias',className:'section'},
@@ -204,7 +199,7 @@ function Login({setPage}){
   const [pass,setPass]=useState('');
   const [err,setErr]=useState('');
   const submit=()=>{
-    if(user==='admin'&&pass==='sweeteden2025'){setPage('admin');setErr('');}
+    if(user==='admin'&&pass==='123'){setPage('admin');setErr('');}
     else setErr('Usuario o contraseña incorrectos');
   };
   return h('div',{className:'login-wrap'},
@@ -224,14 +219,13 @@ function Login({setPage}){
       h('div',{style:{textAlign:'center',marginTop:'1rem'}},
         h('button',{className:'btn-cancel',onClick:()=>setPage('home')},'← Volver al sitio')
       )
-    ),
-    h('p',{style:{textAlign:'center',fontSize:'11px',color:'#9A8F8A',marginTop:'1rem'}},'Demo: admin / sweeteden2025')
+    )
   );
 }
 
-// ── PRODUCT FORM ───────────────────────────────────────────────
-function ProductForm({item,onSave,onCancel}){
-  const blank={id:null,name:'',category:'Trufas',price:'',desc:'',featured:false,imageUrl:''};
+// ── PRODUCT FORM ──────────────────────────────────────────────
+function ProductForm({item,onSave,onCancel,saving}){
+  const blank={id:null,name:'',category:'Galletas',price:'',desc:'',featured:false,imageUrl:''};
   const [f,setF]=useState(item||blank);
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
   return h('div',null,
@@ -245,17 +239,15 @@ function ProductForm({item,onSave,onCancel}){
         h('input',{className:'form-input',value:f.price,onChange:e=>set('price',e.target.value),placeholder:'RD$000'})
       )
     ),
-    h('div',{className:'form-row'},
-      h('div',{className:'form-group'},
-        h('label',{className:'form-label'},'Categoría'),
-        h('select',{className:'form-select',value:f.category,onChange:e=>set('category',e.target.value)},
-          ["Trufas","Macarons","Cake Pops","Galletas","Brownies","Cajas","Tartas","Cupcakes","Especiales"].map(c=>h('option',{key:c,value:c},c))
-        )
+    h('div',{className:'form-group'},
+      h('label',{className:'form-label'},'Categoría'),
+      h('select',{className:'form-select',value:f.category,onChange:e=>set('category',e.target.value)},
+        ["Galletas","Donas","Cajas","Frituras","Cupcakes","Especiales"].map(c=>h('option',{key:c,value:c},c))
       )
     ),
     h('div',{className:'form-group'},
       h('label',{className:'form-label'},'URL de imagen (opcional)'),
-      h('input',{className:'form-input',value:f.imageUrl,onChange:e=>set('imageUrl',e.target.value),placeholder:'https://...'})
+      h('input',{className:'form-input',value:f.imageUrl,onChange:e=>set('imageUrl',e.target.value),placeholder:'https://i.ibb.co/...'})
     ),
     h('div',{className:'form-group'},
       h('label',{className:'form-label'},'Descripción'),
@@ -266,20 +258,17 @@ function ProductForm({item,onSave,onCancel}){
       h('label',{htmlFor:'featured',style:{fontSize:'13px',color:'#6B4C3B'}},'Marcar como favorito')
     ),
     h('div',{className:'form-actions'},
-      h('button',{className:'btn-save',onClick:()=>onSave(f)},'Guardar'),
-      h('button',{className:'btn-cancel',onClick:onCancel},'Cancelar')
+      h('button',{className:'btn-save',disabled:saving,onClick:()=>onSave(f)},saving?'Guardando...':'Guardar'),
+      h('button',{className:'btn-cancel',disabled:saving,onClick:onCancel},'Cancelar')
     )
   );
 }
 
 // ── NEWS FORM ─────────────────────────────────────────────────
-function NewsForm({item,onSave,onCancel}){
+function NewsForm({item,onSave,onCancel,saving}){
   const blank={id:null,date:'',title:'',text:'',imageUrl:''};
   const todayISO=new Date().toISOString().slice(0,10);
-  const [f,setF]=useState(()=>{
-    if(item){return {...item,date:toISODate(item.date)}}
-    return {...blank,date:todayISO}
-  });
+  const [f,setF]=useState(()=>item?{...item,date:toISODate(item.date)}:{...blank,date:todayISO});
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
   return h('div',null,
     h('div',{className:'form-row'},
@@ -289,7 +278,7 @@ function NewsForm({item,onSave,onCancel}){
       ),
       h('div',{className:'form-group'},
         h('label',{className:'form-label'},'URL imagen (opcional)'),
-        h('input',{className:'form-input',value:f.imageUrl,onChange:e=>set('imageUrl',e.target.value),placeholder:'https://...'})
+        h('input',{className:'form-input',value:f.imageUrl,onChange:e=>set('imageUrl',e.target.value),placeholder:'https://i.ibb.co/...'})
       )
     ),
     h('div',{className:'form-group'},
@@ -301,40 +290,66 @@ function NewsForm({item,onSave,onCancel}){
       h('textarea',{className:'form-textarea',value:f.text,onChange:e=>set('text',e.target.value),placeholder:'Texto de la noticia...'})
     ),
     h('div',{className:'form-actions'},
-      h('button',{className:'btn-save',onClick:()=>onSave(f)},'Guardar'),
-      h('button',{className:'btn-cancel',onClick:onCancel},'Cancelar')
+      h('button',{className:'btn-save',disabled:saving,onClick:()=>onSave(f)},saving?'Guardando...':'Guardar'),
+      h('button',{className:'btn-cancel',disabled:saving,onClick:onCancel},'Cancelar')
     )
   );
 }
 
 // ── ADMIN PANEL ───────────────────────────────────────────────
-function Admin({products,setProducts,news,setNews,setPage}){
+function Admin({data,setData,setPage}){
+  const {products,news}=data;
   const [tab,setTab]=useState('products');
   const [editP,setEditP]=useState(null);
   const [editN,setEditN]=useState(null);
   const [showFormP,setShowFormP]=useState(false);
   const [showFormN,setShowFormN]=useState(false);
+  const [saving,setSaving]=useState(false);
   const [toast,setToast]=useState('');
 
-  const showToast=msg=>{setToast(msg);setTimeout(()=>setToast(''),2300)};
+  const showToast=msg=>{setToast(msg);setTimeout(()=>setToast(''),2400)};
 
-  const saveProduct=f=>{
+  const persist=async(newData)=>{
+    setSaving(true);
+    try{await saveData(newData);setData(newData);}
+    catch{showToast('❌ Error al guardar. Revisa tu conexión.');}
+    finally{setSaving(false);}
+  };
+
+  const saveProduct=async f=>{
     if(!f.name||!f.price){showToast('⚠ Completa nombre y precio');return}
-    if(f.id){setProducts(ps=>ps.map(p=>p.id===f.id?f:p));showToast('✓ Producto actualizado')}
-    else{setProducts(ps=>[...ps,{...f,id:Date.now()}]);showToast('✓ Producto agregado')}
+    let newProducts;
+    if(f.id){newProducts=products.map(p=>p.id===f.id?f:p);showToast('✓ Producto actualizado');}
+    else{newProducts=[...products,{...f,id:Date.now()}];showToast('✓ Producto agregado');}
+    await persist({...data,products:newProducts});
     setEditP(null);setShowFormP(false);
   };
-  const delProduct=id=>{if(confirm('¿Eliminar este producto?')){setProducts(ps=>ps.filter(p=>p.id!==id));showToast('Producto eliminado')}};
 
-  const saveNews=f=>{
+  const delProduct=async id=>{
+    if(!confirm('¿Eliminar este producto?'))return;
+    await persist({...data,products:products.filter(p=>p.id!==id)});
+    showToast('Producto eliminado');
+  };
+
+  const saveNews=async f=>{
     if(!f.title){showToast('⚠ El título es requerido');return}
-    if(f.id){setNews(ns=>ns.map(n=>n.id===f.id?f:n));showToast('✓ Noticia actualizada')}
-    else{setNews(ns=>[{...f,id:Date.now()},...ns]);showToast('✓ Noticia publicada')}
+    let newNews;
+    if(f.id){newNews=news.map(n=>n.id===f.id?f:n);showToast('✓ Noticia actualizada');}
+    else{newNews=[{...f,id:Date.now()},...news];showToast('✓ Noticia publicada');}
+    await persist({...data,news:newNews});
     setEditN(null);setShowFormN(false);
   };
-  const delNews=id=>{if(confirm('¿Eliminar esta noticia?')){setNews(ns=>ns.filter(n=>n.id!==id));showToast('Noticia eliminada')}};
+
+  const delNews=async id=>{
+    if(!confirm('¿Eliminar esta noticia?'))return;
+    await persist({...data,news:news.filter(n=>n.id!==id)});
+    showToast('Noticia eliminada');
+  };
+
+  const closeForm=()=>{setEditP(null);setEditN(null);setShowFormP(false);setShowFormN(false)};
 
   return h('div',null,
+    h('style',null,`@keyframes spin{to{transform:rotate(360deg)}}`),
     h('nav',null,
       h('div',{className:'nav-inner'},
         h('div',{className:'nav-logo'},'Sweet',h('span',null,' Eden')),
@@ -347,31 +362,35 @@ function Admin({products,setProducts,news,setNews,setPage}){
       h('div',{className:'admin-header'},
         h('div',{className:'admin-title'},'Panel Admin'),
         tab==='products'
-          ? h('button',{className:'btn-save',onClick:()=>{setEditP(null);setShowFormP(true)}},'+ Producto')
-          : h('button',{className:'btn-save',onClick:()=>{setEditN(null);setShowFormN(true)}},'+ Noticia')
+          ? h('button',{className:'btn-save',disabled:saving,onClick:()=>{closeForm();setShowFormP(true)}},'+ Producto')
+          : h('button',{className:'btn-save',disabled:saving,onClick:()=>{closeForm();setShowFormN(true)}},'+ Noticia')
       ),
       h('div',{className:'admin-tabs'},
-        h('button',{className:'admin-tab'+(tab==='products'?' active':''),onClick:()=>{setTab('products');setShowFormP(false);setShowFormN(false)}},'Productos ('+products.length+')'),
-        h('button',{className:'admin-tab'+(tab==='news'?' active':''),onClick:()=>{setTab('news');setShowFormP(false);setShowFormN(false)}},'Noticias ('+news.length+')')
+        h('button',{className:'admin-tab'+(tab==='products'?' active':''),onClick:()=>{setTab('products');closeForm()}},'Productos ('+products.length+')'),
+        h('button',{className:'admin-tab'+(tab==='news'?' active':''),onClick:()=>{setTab('news');closeForm()}},'Noticias ('+news.length+')')
       ),
 
       tab==='products'&&h('div',null,
         (showFormP||editP)&&h('div',{style:{background:'var(--white)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'1.25rem',marginBottom:'1.25rem'}},
           h('div',{style:{fontSize:'14px',fontWeight:'500',color:'var(--warm)',marginBottom:'1rem'}},editP?'Editar producto':'Nuevo producto'),
-          h(ProductForm,{item:editP,onSave:saveProduct,onCancel:()=>{setEditP(null);setShowFormP(false)}})
+          h(ProductForm,{item:editP,onSave:saveProduct,onCancel:closeForm,saving})
         ),
         h('div',{className:'admin-list'},
           products.length===0&&h('div',{className:'empty'},h('div',{className:'empty-icon'},h(Icon,{name:'cake',style:{width:'48px',height:'48px'}})),h('div',{className:'empty-text'},'Sin productos aún')),
           products.map(p=>h('div',{key:p.id,className:'admin-item'},
-            h('div',{className:'admin-item-emoji'},p.imageUrl?h('img',{src:p.imageUrl,style:{width:'100%',height:'100%',objectFit:'cover',borderRadius:'6px'}}):h(Icon,{name:'cake',style:{width:'24px',height:'24px'}})),
+            h('div',{className:'admin-item-emoji'},
+              p.imageUrl
+                ? h('img',{src:p.imageUrl,style:{width:'100%',height:'100%',objectFit:'cover',borderRadius:'6px'},onError:e=>{e.target.style.display='none'}})
+                : h(Icon,{name:'cake',style:{width:'24px',height:'24px'}})
+            ),
             h('div',{className:'admin-item-info'},
               h('div',{className:'admin-item-name'},p.name),
               h('div',{className:'admin-item-sub'},p.category+(p.featured?' · ★ Favorito':''))
             ),
             h('div',{className:'admin-item-price'},p.price),
             h('div',{className:'admin-actions'},
-              h('button',{className:'btn-edit',onClick:()=>{setEditP(p);setShowFormP(false)}},'Editar'),
-              h('button',{className:'btn-del',onClick:()=>delProduct(p.id)},'✕')
+              h('button',{className:'btn-edit',disabled:saving,onClick:()=>{setEditP(p);setShowFormP(false)}},'Editar'),
+              h('button',{className:'btn-del',disabled:saving,onClick:()=>delProduct(p.id)},'✕')
             )
           ))
         )
@@ -380,19 +399,19 @@ function Admin({products,setProducts,news,setNews,setPage}){
       tab==='news'&&h('div',null,
         (showFormN||editN)&&h('div',{style:{background:'var(--white)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'1.25rem',marginBottom:'1.25rem'}},
           h('div',{style:{fontSize:'14px',fontWeight:'500',color:'var(--warm)',marginBottom:'1rem'}},editN?'Editar noticia':'Nueva noticia'),
-          h(NewsForm,{item:editN,onSave:saveNews,onCancel:()=>{setEditN(null);setShowFormN(false)}})
+          h(NewsForm,{item:editN,onSave:saveNews,onCancel:closeForm,saving})
         ),
         h('div',{className:'admin-list'},
           news.length===0&&h('div',{className:'empty'},h('div',{className:'empty-icon'},h(Icon,{name:'document',style:{width:'48px',height:'48px'}})),h('div',{className:'empty-text'},'Sin noticias aún')),
           news.map(n=>h('div',{key:n.id,className:'admin-item'},
             h('div',{className:'admin-item-emoji'},h(Icon,{name:'document',style:{width:'20px',height:'20px'}})),
-              h('div',{className:'admin-item-info'},
-                h('div',{className:'admin-item-name'},n.title),
-                h('div',{className:'admin-item-sub'},formatDate(n.date))
-              ),
+            h('div',{className:'admin-item-info'},
+              h('div',{className:'admin-item-name'},n.title),
+              h('div',{className:'admin-item-sub'},formatDate(n.date))
+            ),
             h('div',{className:'admin-actions'},
-              h('button',{className:'btn-edit',onClick:()=>{setEditN(n);setShowFormN(false)}},'Editar'),
-              h('button',{className:'btn-del',onClick:()=>delNews(n.id)},'✕')
+              h('button',{className:'btn-edit',disabled:saving,onClick:()=>{setEditN(n);setShowFormN(false)}},'Editar'),
+              h('button',{className:'btn-del',disabled:saving,onClick:()=>delNews(n.id)},'✕')
             )
           ))
         )
@@ -402,15 +421,27 @@ function Admin({products,setProducts,news,setNews,setPage}){
   );
 }
 
-// ── ROOT APP ───────────────────────────────────────────────────
+// ── ROOT APP ──────────────────────────────────────────────────
 function App(){
   const [page,setPage]=useState('home');
-  const [products,setProducts]=useLocalStorage('se_products',INITIAL_PRODUCTS);
-  const [news,setNews]=useLocalStorage('se_news',INITIAL_NEWS);
+  const [data,setData]=useState(null);   // null = cargando
+  const [error,setError]=useState('');
+
+  useEffect(()=>{
+    loadData()
+      .then(setData)
+      .catch(()=>setError('No se pudo conectar con la base de datos.'));
+  },[]);
+
+  if(error) return h('div',{style:{textAlign:'center',padding:'4rem 1rem',color:'#C9667A',fontSize:'14px'}},
+    h('div',{style:{fontSize:'2rem',marginBottom:'1rem'}},'⚠️'),
+    error
+  );
+  if(!data) return h('div',null,h('style',null,'@keyframes spin{to{transform:rotate(360deg)}}'),h(Spinner));
 
   if(page==='login') return h(Login,{setPage});
-  if(page==='admin') return h(Admin,{products,setProducts,news,setNews,setPage});
-  return h(PublicSite,{products,news,setPage});
+  if(page==='admin') return h(Admin,{data,setData,setPage});
+  return h(PublicSite,{products:data.products||[],news:data.news||[],setPage});
 }
 
 ReactDOM.createRoot(document.getElementById('app')).render(h(App));
