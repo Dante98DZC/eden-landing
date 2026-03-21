@@ -6,6 +6,7 @@
 <title>Sweet Eden</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="base.css" />
+<script src="https://unpkg.com/heroicons@2.0.18/24/outline/index.js" type="module"></script>
 </head>
 <body>
 <div id="app"></div>
@@ -15,19 +16,35 @@
 const {useState,useEffect,useRef,useCallback}=React;
 const h=React.createElement;
 
+// ── Icon helper (Heroicons via CDN) ───────────────────────────
+function Icon({name,className,style}){
+  const M={
+    truck:'https://unpkg.com/heroicons@2.0.13/24/outline/truck.svg',
+    sparkles:'https://unpkg.com/heroicons@2.0.13/24/outline/sparkles.svg',
+    gift:'https://unpkg.com/heroicons@2.0.13/24/outline/gift.svg',
+    document:'https://unpkg.com/heroicons@2.0.13/24/outline/document-text.svg',
+    cake:'https://unpkg.com/heroicons@2.0.13/24/outline/cake.svg'
+  };
+  return h('img',{src:M[name]||M.cake,alt:name,className:(className||''),style:Object.assign({width:'18px',height:'18px',display:'inline-block'},style||{})});
+}
+
 // ── Initial Data ────────────────────────────────────────────
 const INITIAL_PRODUCTS=[
-  {id:1,name:"Trufas de Chocolate Belga",category:"Trufas",price:"RD$350",desc:"Trufas artesanales elaboradas con chocolate belga 70%, cubiertas en cacao puro. Pack de 6 unidades.",emoji:"🍫",featured:true,imageUrl:""},
-  {id:2,name:"Macarons Franceses",category:"Macarons",price:"RD$280",desc:"Macarons clásicos en colores pastel. Sabores: vainilla, fresa y lavanda. Pack de 4.",emoji:"🌸",featured:false,imageUrl:""},
-  {id:3,name:"Cake Pops de Terciopelo Rojo",category:"Cake Pops",price:"RD$180",desc:"Cake pops de red velvet con cobertura de chocolate blanco decorado. Unidad.",emoji:"🍭",featured:true,imageUrl:""},
-  {id:4,name:"Galletas Decoradas",category:"Galletas",price:"RD$120",desc:"Galletas de mantequilla decoradas con glasa real. Diseños personalizables. Unidad.",emoji:"🍪",featured:false,imageUrl:""},
-  {id:5,name:"Brownie Gourmet",category:"Brownies",price:"RD$220",desc:"Brownie de chocolate intenso con nueces pecanas y caramelo salado. Porción.",emoji:"🟫",featured:true,imageUrl:""},
-  {id:6,name:"Box de Dulces Mixta",category:"Cajas",price:"RD$1,200",desc:"Caja regalo con selección de nuestros mejores dulces. Perfecta para regalo.",emoji:"🎁",featured:false,imageUrl:""},
+  {id:1,name:"Trufas de Chocolate Belga",category:"Trufas",price:"$350",desc:"Trufas artesanales elaboradas con chocolate belga 70%, cubiertas en cacao puro. Pack de 6 unidades.",featured:true,imageUrl:"Res/IMG-20250808-WA0018.jpg"},
+  {id:2,name:"Macarons Franceses",category:"Macarons",price:"$280",desc:"Macarons clásicos en colores pastel. Sabores: vainilla, fresa y lavanda. Pack de 4.",featured:false,imageUrl:"Res/IMG-20250811-WA0001.jpg"},
+  {id:3,name:"Cake Pops de Terciopelo Rojo",category:"Cake Pops",price:"$180",desc:"Cake pops de red velvet con cobertura de chocolate blanco decorado. Unidad.",featured:true,imageUrl:"Res/IMG-20250812-WA0040.jpg"},
+  {id:4,name:"Galletas Decoradas",category:"Galletas",price:"$120",desc:"Galletas de mantequilla decoradas con glasa real. Diseños personalizables. Unidad.",featured:false,imageUrl:"Res/IMG-20250916-WA0106.jpg"},
+  {id:5,name:"Brownie Gourmet",category:"Brownies",price:"$220",desc:"Brownie de chocolate intenso con nueces pecanas y caramelo salado. Porción.",featured:true,imageUrl:"Res/IMG-20251001-WA0343.jpg"},
+  {id:6,name:"Box de Dulces Mixta",category:"Cajas",price:"$1,200",desc:"Caja regalo con selección de nuestros mejores dulces. Perfecta para regalo.",featured:false,imageUrl:"Res/IMG-20251001-WA0347.jpg"},
+  {id:7,name:"Tartaletas de Frutas",category:"Tartas",price:"$450",desc:"Tartaletas individuales con frutas frescas de temporada y crema pastelera.",featured:false,imageUrl:"Res/IMG-20251015-WA0154.jpg"},
+  {id:8,name:"Cupcakes de Vainilla",category:"Cupcakes",price:"$150",desc:"Cupcakes esponjosos con buttercream de vainilla. Unidad.",featured:false,imageUrl:"Res/IMG-20251015-WA0156.jpg"},
+  {id:9,name:"Dulces Navideños",category:"Especiales",price:"$300",desc:"Selección especial de dulces para Navidad. Pack de 8 piezas.",featured:true,imageUrl:"Res/IMG-20251025-WA0006.jpg"},
 ];
 const INITIAL_NEWS=[
-  {id:1,date:"20 Mar 2025",title:"¡Nuevos sabores de primavera disponibles!",text:"Incorporamos 4 nuevos sabores de macarons inspirados en flores de temporada. ¡Disponibles en pedidos desde hoy!",imageUrl:""},
-  {id:2,date:"10 Mar 2025",title:"Pedidos para bodas y eventos",text:"Ahora ofrecemos servicio completo para bodas, baby showers y cumpleaños. Personaliza tu orden con anticipación.",imageUrl:""},
-  {id:3,date:"01 Mar 2025",title:"Temporada de Semana Santa",text:"Prepara tus pedidos con tiempo para Semana Santa. Tenemos ediciones especiales de huevos de chocolate y dulces tradicionales.",imageUrl:""},
+  {id:1,date:"20 Mar 2025",title:"¡Nuevos sabores de primavera disponibles!",text:"Incorporamos 4 nuevos sabores de macarons inspirados en flores de temporada. ¡Disponibles en pedidos desde hoy!",imageUrl:"Res/IMG-20251015-WA0154.jpg"},
+  {id:2,date:"10 Mar 2025",title:"Pedidos para bodas y eventos",text:"Ahora ofrecemos servicio completo para bodas, baby showers y cumpleaños. Personaliza tu orden con anticipación.",imageUrl:"Res/IMG-20251015-WA0156.jpg"},
+  {id:3,date:"01 Mar 2025",title:"Temporada de Semana Santa",text:"Prepara tus pedidos con tiempo para Semana Santa. Tenemos ediciones especiales de huevos de chocolate y dulces tradicionales.",imageUrl:"Res/IMG-20251025-WA0006.jpg"},
+  {id:4,date:"15 Feb 2025",title:"¡Feliz Día de los Enamorados!",text:"Descubre nuestros corazones de chocolate y cajas especiales para San Valentín. Haz tu pedido antes del 14 de febrero.",imageUrl:"Res/IMG-20260210-WA0010.jpg"},
 ];
 
 // ── Storage helpers ──────────────────────────────────────────
@@ -39,6 +56,18 @@ function useLocalStorage(key,init){
   return [val,setVal];
 }
 
+// ── Date helpers ─────────────────────────────────────────────
+function formatDate(d){
+  try{
+    const dt=new Date(d);
+    if(isNaN(dt)) return d;
+    return dt.toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'});
+  }catch{return d}
+}
+function toISODate(d){
+  try{const dt=new Date(d);if(isNaN(dt)) return new Date().toISOString().slice(0,10);return dt.toISOString().slice(0,10)}catch{return new Date().toISOString().slice(0,10)}
+}
+
 // ── Toast ────────────────────────────────────────────────────
 function Toast({msg,onDone}){
   useEffect(()=>{const t=setTimeout(onDone,2200);return()=>clearTimeout(t)},[]);
@@ -46,21 +75,21 @@ function Toast({msg,onDone}){
 }
 
 // ── Category list ─────────────────────────────────────────────
-const CATS=["Todos","Trufas","Macarons","Cake Pops","Galletas","Brownies","Cajas"];
+const CATS=["Todos","Galletas","Donas","Cajas","Frituras","Cupcakes","Especiales"];
 
 // ── ProductCard ───────────────────────────────────────────────
 function ProductCard({p,onClick}){
   return h('div',{className:'product-card',onClick:()=>onClick(p)},
     p.imageUrl
       ? h('img',{src:p.imageUrl,alt:p.name,className:'product-img',onError:e=>{e.target.style.display='none'}})
-      : h('div',{className:'product-img-placeholder'},p.emoji||'🍬'),
+      : h('div',{className:'product-img-placeholder'},h(Icon,{name:'cake',style:{width:'48px',height:'48px'}})),
     h('div',{className:'product-info'},
       p.featured&&h('span',{className:'product-badge'},'★ Favorito'),
       h('span',{className:'product-cat-tag'},p.category),
       h('div',{className:'product-name'},p.name),
       h('div',{className:'product-footer'},
         h('span',{className:'product-price'},p.price),
-        h('button',{className:'product-order-btn',onClick:e=>{e.stopPropagation();window.open(`https://wa.me/18091234567?text=Hola! Me interesa pedir: ${p.name} (${p.price})`,'_blank')}},'Pedir')
+        h('button',{className:'product-order-btn',onClick:e=>{e.stopPropagation();window.open(`https://wa.me/18291234567?text=Hola! Me interesa pedir: ${p.name} (${p.price})`,'_blank')}},'Pedir')
       )
     )
   );
@@ -71,7 +100,7 @@ function NewsCard({n}){
   return h('div',{className:'news-card'},
     h('div',{className:'news-accent'}),
     h('div',{className:'news-body'},
-      h('div',{className:'news-date'},n.date),
+      h('div',{className:'news-date'},formatDate(n.date)),
       h('div',{className:'news-title'},n.title),
       h('div',{className:'news-text'},n.text)
     ),
@@ -88,13 +117,13 @@ function ProductModal({p,onClose}){
       h('button',{className:'modal-close',onClick:onClose},'✕'),
       p.imageUrl
         ? h('img',{src:p.imageUrl,alt:p.name,className:'modal-img'})
-        : h('div',{className:'modal-img'},p.emoji||'🍬'),
+        : h('div',{className:'modal-img'},h(Icon,{name:'cake',style:{width:'64px',height:'64px'}})),
       h('span',{className:'product-cat-tag'},p.category),
       h('div',{className:'modal-title'},p.name),
       h('div',{className:'modal-price'},p.price),
       h('div',{className:'modal-desc'},p.desc),
       h('div',{className:'modal-actions'},
-        h('button',{className:'btn-primary',style:{flex:1},onClick:()=>window.open(`https://wa.me/18091234567?text=Hola! Me interesa pedir: ${p.name} (${p.price})`,'_blank')},'📱 Pedir por WhatsApp'),
+        h('button',{className:'btn-primary',style:{flex:1},onClick:()=>window.open(`https://wa.me/18291234567?text=Hola! Me interesa pedir: ${p.name} (${p.price})`,'_blank')},'📱 Pedir por WhatsApp'),
         h('button',{className:'btn-secondary',onClick:onClose},'Cerrar')
       )
     )
@@ -111,7 +140,7 @@ function PublicSite({products,news,setPage}){
       h('div',{className:'nav-inner'},
         h('div',{className:'nav-logo'},'Sweet',h('span',null,' Eden')),
         h('div',{className:'nav-links'},
-          h('button',{className:'nav-btn',onClick:()=>document.getElementById('productos')?.scrollIntoView({behavior:'smooth'})},'Dulces'),
+          h('button',{className:'nav-btn',onClick:()=>document.getElementById('productos')?.scrollIntoView({behavior:'smooth'})},'Ofertas'),
           h('button',{className:'nav-btn',onClick:()=>document.getElementById('noticias')?.scrollIntoView({behavior:'smooth'})},'Noticias'),
           h('button',{className:'nav-btn',onClick:()=>setPage('login')},'Admin')
         )
@@ -123,12 +152,12 @@ function PublicSite({products,news,setPage}){
       h('p',null,'Creamos experiencias dulces únicas, elaboradas a mano con los mejores ingredientes.'),
       h('div',{className:'hero-actions'},
         h('button',{className:'btn-primary',onClick:()=>document.getElementById('productos')?.scrollIntoView({behavior:'smooth'})},'Ver menú completo'),
-        h('button',{className:'btn-secondary',onClick:()=>window.open('https://wa.me/18091234567','_blank')},'📱 Hacer un pedido')
+        h('button',{className:'btn-secondary',onClick:()=>window.open('https://wa.me/18291234567','_blank')},'📱 Hacer un pedido')
       ),
       h('div',{className:'hero-floats'},
-        h('div',{className:'hero-float'},h('span',{className:'hero-float-icon',style:{background:'#F5DCE1'}},'🚚'),'Entrega a domicilio'),
-        h('div',{className:'hero-float'},h('span',{className:'hero-float-icon',style:{background:'#F0E0C0'}},'🎁'),'Pedidos personalizados'),
-        h('div',{className:'hero-float'},h('span',{className:'hero-float-icon',style:{background:'#DCF5E8'}},'✨'),'100% artesanal')
+        h('div',{className:'hero-float'},h('span',{className:'hero-float-icon',style:{background:'#F5DCE1'}},h(Icon,{name:'truck'})),'Entrega a domicilio'),
+        h('div',{className:'hero-float'},h('span',{className:'hero-float-icon',style:{background:'#F0E0C0'}},h(Icon,{name:'gift'})),'Pedidos personalizados'),
+        h('div',{className:'hero-float'},h('span',{className:'hero-float-icon',style:{background:'#DCF5E8'}},h(Icon,{name:'sparkles'})),'100% artesanal')
       )
     ),
     h('div',{id:'productos',className:'section'},
@@ -153,14 +182,14 @@ function PublicSite({products,news,setPage}){
         )
       ),
       news.length===0
-        ? h('div',{className:'empty'},h('div',{className:'empty-icon'},'📰'),h('div',{className:'empty-text'},'Sin noticias por ahora'))
+        ? h('div',{className:'empty'},h('div',{className:'empty-icon'},h(Icon,{name:'document',style:{width:'48px',height:'48px'}})),h('div',{className:'empty-text'},'Sin noticias por ahora'))
         : h('div',{className:'news-list'},news.map(n=>h(NewsCard,{key:n.id,n})))
     ),
     h('div',{className:'contact-strip'},
       h('h2',null,'¿Lista para ordenar?'),
       h('p',null,'Escríbenos directamente y creamos tu pedido especial'),
       h('div',{className:'contact-buttons'},
-        h('button',{className:'contact-btn',onClick:()=>window.open('https://wa.me/18091234567','_blank')},'💬 WhatsApp'),
+        h('button',{className:'contact-btn',onClick:()=>window.open('https://wa.me/18291234567','_blank')},'💬 WhatsApp'),
         h('button',{className:'contact-btn',onClick:()=>window.open('https://instagram.com/sweeteden','_blank')},'📷 Instagram')
       )
     ),
@@ -175,7 +204,7 @@ function Login({setPage}){
   const [pass,setPass]=useState('');
   const [err,setErr]=useState('');
   const submit=()=>{
-    if(user==='admin'&&pass==='123'){setPage('admin');setErr('');}
+    if(user==='admin'&&pass==='sweeteden2025'){setPage('admin');setErr('');}
     else setErr('Usuario o contraseña incorrectos');
   };
   return h('div',{className:'login-wrap'},
@@ -202,7 +231,7 @@ function Login({setPage}){
 
 // ── PRODUCT FORM ───────────────────────────────────────────────
 function ProductForm({item,onSave,onCancel}){
-  const blank={id:null,name:'',category:'Trufas',price:'',desc:'',emoji:'🍬',featured:false,imageUrl:''};
+  const blank={id:null,name:'',category:'Trufas',price:'',desc:'',featured:false,imageUrl:''};
   const [f,setF]=useState(item||blank);
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
   return h('div',null,
@@ -220,12 +249,8 @@ function ProductForm({item,onSave,onCancel}){
       h('div',{className:'form-group'},
         h('label',{className:'form-label'},'Categoría'),
         h('select',{className:'form-select',value:f.category,onChange:e=>set('category',e.target.value)},
-          ["Trufas","Macarons","Cake Pops","Galletas","Brownies","Cajas"].map(c=>h('option',{key:c,value:c},c))
+          ["Trufas","Macarons","Cake Pops","Galletas","Brownies","Cajas","Tartas","Cupcakes","Especiales"].map(c=>h('option',{key:c,value:c},c))
         )
-      ),
-      h('div',{className:'form-group'},
-        h('label',{className:'form-label'},'Emoji (icono)'),
-        h('input',{className:'form-input',value:f.emoji,onChange:e=>set('emoji',e.target.value),placeholder:'🍬'})
       )
     ),
     h('div',{className:'form-group'},
@@ -250,13 +275,17 @@ function ProductForm({item,onSave,onCancel}){
 // ── NEWS FORM ─────────────────────────────────────────────────
 function NewsForm({item,onSave,onCancel}){
   const blank={id:null,date:'',title:'',text:'',imageUrl:''};
-  const [f,setF]=useState(item||{...blank,date:new Date().toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})});
+  const todayISO=new Date().toISOString().slice(0,10);
+  const [f,setF]=useState(()=>{
+    if(item){return {...item,date:toISODate(item.date)}}
+    return {...blank,date:todayISO}
+  });
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
   return h('div',null,
     h('div',{className:'form-row'},
       h('div',{className:'form-group'},
         h('label',{className:'form-label'},'Fecha'),
-        h('input',{className:'form-input',value:f.date,onChange:e=>set('date',e.target.value)})
+        h('input',{className:'form-input',type:'date',value:f.date,onChange:e=>set('date',e.target.value)})
       ),
       h('div',{className:'form-group'},
         h('label',{className:'form-label'},'URL imagen (opcional)'),
@@ -332,9 +361,9 @@ function Admin({products,setProducts,news,setNews,setPage}){
           h(ProductForm,{item:editP,onSave:saveProduct,onCancel:()=>{setEditP(null);setShowFormP(false)}})
         ),
         h('div',{className:'admin-list'},
-          products.length===0&&h('div',{className:'empty'},h('div',{className:'empty-icon'},'🍬'),h('div',{className:'empty-text'},'Sin productos aún')),
+          products.length===0&&h('div',{className:'empty'},h('div',{className:'empty-icon'},h(Icon,{name:'cake',style:{width:'48px',height:'48px'}})),h('div',{className:'empty-text'},'Sin productos aún')),
           products.map(p=>h('div',{key:p.id,className:'admin-item'},
-            h('div',{className:'admin-item-emoji'},p.imageUrl?h('img',{src:p.imageUrl,style:{width:'100%',height:'100%',objectFit:'cover',borderRadius:'6px'}}):p.emoji||'🍬'),
+            h('div',{className:'admin-item-emoji'},p.imageUrl?h('img',{src:p.imageUrl,style:{width:'100%',height:'100%',objectFit:'cover',borderRadius:'6px'}}):h(Icon,{name:'cake',style:{width:'24px',height:'24px'}})),
             h('div',{className:'admin-item-info'},
               h('div',{className:'admin-item-name'},p.name),
               h('div',{className:'admin-item-sub'},p.category+(p.featured?' · ★ Favorito':''))
@@ -354,13 +383,13 @@ function Admin({products,setProducts,news,setNews,setPage}){
           h(NewsForm,{item:editN,onSave:saveNews,onCancel:()=>{setEditN(null);setShowFormN(false)}})
         ),
         h('div',{className:'admin-list'},
-          news.length===0&&h('div',{className:'empty'},h('div',{className:'empty-icon'},'📰'),h('div',{className:'empty-text'},'Sin noticias aún')),
+          news.length===0&&h('div',{className:'empty'},h('div',{className:'empty-icon'},h(Icon,{name:'document',style:{width:'48px',height:'48px'}})),h('div',{className:'empty-text'},'Sin noticias aún')),
           news.map(n=>h('div',{key:n.id,className:'admin-item'},
-            h('div',{className:'admin-item-emoji'},'📰'),
-            h('div',{className:'admin-item-info'},
-              h('div',{className:'admin-item-name'},n.title),
-              h('div',{className:'admin-item-sub'},n.date)
-            ),
+            h('div',{className:'admin-item-emoji'},h(Icon,{name:'document',style:{width:'20px',height:'20px'}})),
+              h('div',{className:'admin-item-info'},
+                h('div',{className:'admin-item-name'},n.title),
+                h('div',{className:'admin-item-sub'},formatDate(n.date))
+              ),
             h('div',{className:'admin-actions'},
               h('button',{className:'btn-edit',onClick:()=>{setEditN(n);setShowFormN(false)}},'Editar'),
               h('button',{className:'btn-del',onClick:()=>delNews(n.id)},'✕')
