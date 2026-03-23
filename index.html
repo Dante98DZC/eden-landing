@@ -17,16 +17,16 @@ const h=React.createElement;
 
 // ── CONFIG ────────────────────────────────────────────────────
 const BIN_ID  = "69be0ee4b7ec241ddc8a64fc";
-const API_KEY = "$2a$10$F3p5c769IZ9e0wkqFuDBv.KD4cZqDraxm36tFfvBbg6NvEbtJXx1q";
+const API_KEY = "$2a$10$0HKBnvyt.BnoxpApmO5aJO4ZjK1QlXRaZcglh7WCi/XesRwppyhUO";
 const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
 const HEADERS = {
   "Content-Type": "application/json",
-  "X-Master-Key": API_KEY,
+  "X-Access-Key": API_KEY,
   "X-Bin-Versioning": "false"   // siempre sobreescribe, sin historial de versiones
 };
 
 async function loadData(){
-  const res = await fetch(BIN_URL+"/latest", {headers:{"X-Master-Key":API_KEY}});
+  const res = await fetch(BIN_URL+"/latest", {headers:{"X-Access-Key":API_KEY}});
   const json = await res.json();
   return json.record;
 }
@@ -77,8 +77,10 @@ function Spinner(){
 const CATS=["Todos","Galletas","Donas","Cajas","Frituras","Cupcakes","Especiales"];
 
 // ── ProductCard ───────────────────────────────────────────────
-function ProductCard({p,onClick}){
-  return h('div',{className:'product-card',onClick:()=>onClick(p)},
+function ProductCard({p,onClick,whatsappNumber}){
+  const phone = whatsappNumber || '18291234567';
+  const orderUrl = `https://wa.me/${phone.replace(/[^0-9]+/g,'')}?text=Hola! Me interesa pedir: ${encodeURIComponent(p.name+' ('+p.price+')')}`;
+  return h('div',{className:'product-card'+(p.soldOut?' sold-out':''),onClick:()=>onClick(p)},
     p.imageUrl
       ? h('img',{src:p.imageUrl,alt:p.name,className:'product-img',onError:e=>{e.target.style.display='none'}})
       : h('div',{className:'product-img-placeholder'},h(Icon,{name:'cake',style:{width:'48px',height:'48px'}})),
@@ -86,12 +88,14 @@ function ProductCard({p,onClick}){
       p.featured&&h('span',{className:'product-badge'},'★ Favorito'),
       h('span',{className:'product-cat-tag'},p.category),
       h('div',{className:'product-name'},p.name),
+      p.soldOut&&h('div',{className:'product-outstock'},'Agotado'),
       h('div',{className:'product-footer'},
-        h('span',{className:'product-price'},p.price),
-        h('button',{className:'product-order-btn',onClick:e=>{
+        h('span',{className:'product-price'},'$'+p.price),
+        h('button',{className:'product-order-btn',disabled:p.soldOut,onClick:e=>{
           e.stopPropagation();
-          window.open(`https://wa.me/18291234567?text=Hola! Me interesa pedir: ${p.name} (${p.price})`,'_blank');
-        }},'Pedir')
+          if(p.soldOut) return;
+          window.open(orderUrl,'_blank');
+        }},p.soldOut?'Agotado':'Pedir')
       )
     )
   );
@@ -111,8 +115,10 @@ function NewsCard({n}){
 }
 
 // ── ProductModal ──────────────────────────────────────────────
-function ProductModal({p,onClose}){
+function ProductModal({p,onClose,whatsappNumber}){
   if(!p)return null;
+  const phone = whatsappNumber || '18291234567';
+  const orderUrl = `https://wa.me/${phone.replace(/[^0-9]+/g,'')}?text=Hola! Me interesa pedir: ${encodeURIComponent(p.name+' ('+p.price+')')}`;
   return h('div',{className:'modal-overlay',onClick:onClose},
     h('div',{className:'modal',onClick:e=>e.stopPropagation()},
       h('div',{className:'modal-handle'}),
@@ -122,10 +128,11 @@ function ProductModal({p,onClose}){
         : h('div',{className:'modal-img'},h(Icon,{name:'cake',style:{width:'64px',height:'64px'}})),
       h('span',{className:'product-cat-tag'},p.category),
       h('div',{className:'modal-title'},p.name),
-      h('div',{className:'modal-price'},p.price),
+      h('div',{className:'modal-price'},'$'+p.price),
+      p.soldOut&&h('div',{className:'product-outstock'},'Agotado'),
       h('div',{className:'modal-desc'},p.desc),
       h('div',{className:'modal-actions'},
-        h('button',{className:'btn-primary',style:{flex:1},onClick:()=>window.open(`https://wa.me/18291234567?text=Hola! Me interesa pedir: ${p.name} (${p.price})`,'_blank')},'📱 Pedir por WhatsApp'),
+        h('button',{className:'btn-primary',style:{flex:1},disabled:p.soldOut,onClick:()=>{ if(!p.soldOut) window.open(orderUrl,'_blank'); }},h(Icon,{name:'sparkles'}),(p.soldOut?' Agotado':' Pedir por WhatsApp')),
         h('button',{className:'btn-secondary',onClick:onClose},'Cerrar')
       )
     )
@@ -133,10 +140,15 @@ function ProductModal({p,onClose}){
 }
 
 // ── PUBLIC SITE ───────────────────────────────────────────────
-function PublicSite({products,news,setPage}){
+function PublicSite({products,news,whatsappNumber,hero,setPage}){
   const [cat,setCat]=useState('Todos');
   const [modal,setModal]=useState(null);
   const filtered=cat==='Todos'?products:products.filter(p=>p.category===cat);
+  const heroFloats = hero?.floats || [
+    {icon:'truck', text:'Entrega a domicilio', color:'#F5DCE1'},
+    {icon:'gift', text:'Pedidos personalizados', color:'#F0E0C0'},
+    {icon:'sparkles', text:'100% artesanal', color:'#DCF5E8'}
+  ];
   return h('div',null,
     h('nav',null,
       h('div',{className:'nav-inner'},
@@ -149,13 +161,11 @@ function PublicSite({products,news,setPage}){
       )
     ),
     h('section',{className:'hero'},
-      h('div',{className:'hero-tag'},' Dulcería artesanal ✦ Hecho con amor'),
-      h('h1',null,'Donde cada dulce es ',h('em',null,'una obra de arte')),
-      h('p',null,'Creamos experiencias dulces únicas, elaboradas a mano con los mejores ingredientes.'),
+      h('div',{className:'hero-tag'},hero?.tag || ' Dulcería artesanal ✦ Hecho con amor'),
+      h('h1',{style:{color: hero?.titleColor || 'var(--warm)'}},hero?.title || 'Donde cada dulce es una obra de arte'),
+      h('p',null,hero?.subtitle || 'Creamos experiencias dulces únicas, elaboradas a mano con los mejores ingredientes.'),
       h('div',{className:'hero-floats'},
-        h('div',{className:'hero-float'},h('span',{className:'hero-float-icon',style:{background:'#F5DCE1'}},h(Icon,{name:'truck'})),'Entrega a domicilio'),
-        h('div',{className:'hero-float'},h('span',{className:'hero-float-icon',style:{background:'#F0E0C0'}},h(Icon,{name:'gift'})),'Pedidos personalizados'),
-        h('div',{className:'hero-float'},h('span',{className:'hero-float-icon',style:{background:'#DCF5E8'}},h(Icon,{name:'sparkles'})),'100% artesanal')
+        heroFloats.map(f=>h('div',{key:f.icon,className:'hero-float'},h('span',{className:'hero-float-icon',style:{background:f.color}},h(Icon,{name:f.icon})),f.text))
       )
     ),
     h('div',{id:'productos',className:'section'},
@@ -167,7 +177,7 @@ function PublicSite({products,news,setPage}){
       ),
       filtered.length===0
         ? h('div',{className:'empty'},h('div',{className:'empty-icon'},h(Icon,{name:'cake',style:{width:'48px',height:'48px'}})),h('div',{className:'empty-text'},'Sin productos en esta categoría'))
-        : h('div',{className:'products-grid'},filtered.map(p=>h(ProductCard,{key:p.id,p,onClick:setModal})))
+        : h('div',{className:'products-grid'},filtered.map(p=>h(ProductCard,{key:p.id,p,onClick:setModal,whatsappNumber:whatsappNumber})))
     ),
     h('div',{id:'noticias',className:'section'},
       h('div',{className:'section-header'},
@@ -182,14 +192,13 @@ function PublicSite({products,news,setPage}){
     ),
     h('div',{className:'contact-strip'},
       h('h2',null,'¿Lista para ordenar?'),
-      h('p',null,'Escríbenos directamente y creamos tu pedido especial'),
+      h('p',null,'Escríbenos directamente y te atenderemos con gusto.'),
       h('div',{className:'contact-buttons'},
-        h('button',{className:'contact-btn',onClick:()=>window.open('https://wa.me/18291234567','_blank')},'💬 WhatsApp'),
-        h('button',{className:'contact-btn',onClick:()=>window.open('https://instagram.com/sweeteden','_blank')},'📷 Instagram')
+        h('button',{className:'contact-btn',onClick:()=>window.open(`https://wa.me/${(whatsappNumber||'18291234567').replace(/[^0-9]+/g,'')}`,'_blank')},h(Icon,{name:'sparkles'}),' WhatsApp'),
       )
     ),
     h('footer',null,h('strong',null,'Sweet Eden'),' · Dulcería artesanal · © 2025'),
-    modal&&h(ProductModal,{p:modal,onClose:()=>setModal(null)})
+    modal&&h(ProductModal,{p:modal,onClose:()=>setModal(null),whatsappNumber:whatsappNumber})
   );
 }
 
@@ -225,7 +234,7 @@ function Login({setPage}){
 
 // ── PRODUCT FORM ──────────────────────────────────────────────
 function ProductForm({item,onSave,onCancel,saving}){
-  const blank={id:null,name:'',category:'Galletas',price:'',desc:'',featured:false,imageUrl:''};
+  const blank={id:null,name:'',category:'Galletas',price:'',desc:'',featured:false,imageUrl:'',soldOut:false};
   const [f,setF]=useState(item||blank);
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
   return h('div',null,
@@ -236,7 +245,7 @@ function ProductForm({item,onSave,onCancel,saving}){
       ),
       h('div',{className:'form-group'},
         h('label',{className:'form-label'},'Precio'),
-        h('input',{className:'form-input',value:f.price,onChange:e=>set('price',e.target.value),placeholder:'RD$000'})
+        h('input',{className:'form-input',type:'number',value:f.price,onChange:e=>set('price',e.target.value),placeholder:'25'})
       )
     ),
     h('div',{className:'form-group'},
@@ -256,6 +265,10 @@ function ProductForm({item,onSave,onCancel,saving}){
     h('div',{style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'1rem'}},
       h('input',{type:'checkbox',id:'featured',checked:f.featured,onChange:e=>set('featured',e.target.checked),style:{accentColor:'#C9667A'}}),
       h('label',{htmlFor:'featured',style:{fontSize:'13px',color:'#6B4C3B'}},'Marcar como favorito')
+    ),
+    h('div',{style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'1rem'}},
+      h('input',{type:'checkbox',id:'soldOut',checked:f.soldOut,onChange:e=>set('soldOut',e.target.checked),style:{accentColor:'#C9667A'}}),
+      h('label',{htmlFor:'soldOut',style:{fontSize:'13px',color:'#6B4C3B'}},'Producto agotado')
     ),
     h('div',{className:'form-actions'},
       h('button',{className:'btn-save',disabled:saving,onClick:()=>onSave(f)},saving?'Guardando...':'Guardar'),
@@ -298,7 +311,9 @@ function NewsForm({item,onSave,onCancel,saving}){
 
 // ── ADMIN PANEL ───────────────────────────────────────────────
 function Admin({data,setData,setPage}){
-  const {products,news}=data;
+  const {products,news,whatsappNumber='',hero={}}=data;
+  const [whatsapp,setWhatsapp]=useState(whatsappNumber||'');
+  const [heroData,setHeroData]=useState(hero||{tag:'',title:'',subtitle:'',floats:[{icon:'',text:'',color:''},{icon:'',text:'',color:''},{icon:'',text:'',color:''}]});
   const [tab,setTab]=useState('products');
   const [editP,setEditP]=useState(null);
   const [editN,setEditN]=useState(null);
@@ -306,6 +321,7 @@ function Admin({data,setData,setPage}){
   const [showFormN,setShowFormN]=useState(false);
   const [saving,setSaving]=useState(false);
   const [toast,setToast]=useState('');
+  useEffect(()=>{setWhatsapp(whatsappNumber||'');setHeroData(hero||{tag:' Dulcería artesanal ✦ Hecho con amor',title:'Donde cada dulce es una obra de arte',titleColor:'#3D2B1F',subtitle:'Creamos experiencias dulces únicas, elaboradas a mano con los mejores ingredientes.',floats:[{icon:'truck',text:'Entrega a domicilio',color:'#F5DCE1'},{icon:'gift',text:'Pedidos personalizados',color:'#F0E0C0'},{icon:'sparkles',text:'100% artesanal',color:'#DCF5E8'}]});},[whatsappNumber,hero]);
 
   const showToast=msg=>{setToast(msg);setTimeout(()=>setToast(''),2400)};
 
@@ -314,6 +330,44 @@ function Admin({data,setData,setPage}){
     try{await saveData(newData);setData(newData);}
     catch{showToast('❌ Error al guardar. Revisa tu conexión.');}
     finally{setSaving(false);}
+  };
+
+  const saveWhatsapp=async()=>{
+    if(!whatsapp.trim()){showToast('⚠ Ingresa un número de WhatsApp');return;}
+    await persist({...data,whatsappNumber:whatsapp.trim()});
+    showToast('✓ Número de WhatsApp guardado');
+  };
+
+  const saveHero=async()=>{
+    if(!heroData.tag.trim()){showToast('⚠ La etiqueta superior es requerida');return;}
+    if(!heroData.title.trim()){showToast('⚠ El título es requerido');return;}
+    if(!heroData.subtitle.trim()){showToast('⚠ El subtítulo es requerido');return;}
+    
+    const validFloats = heroData.floats.filter(f => f.icon && f.text.trim());
+    if(validFloats.length === 0){
+      showToast('⚠ Al menos un elemento destacado debe tener icono y texto');return;
+    }
+    
+    await persist({...data,hero:heroData});
+    showToast('✓ Sección Hero actualizada correctamente ('+validFloats.length+' elementos)');
+  };
+
+  const updateHeroFloat=(index,field,value)=>{
+    const newFloats=[...heroData.floats];
+    newFloats[index]={...newFloats[index],[field]:value};
+    setHeroData({...heroData,floats:newFloats});
+  };
+
+  const addHeroFloat=()=>{
+    if(heroData.floats.length >= 6) return; // máximo 6 elementos
+    const newFloats=[...heroData.floats,{icon:'sparkles',text:'',color:'#F5DCE1'}];
+    setHeroData({...heroData,floats:newFloats});
+  };
+
+  const removeHeroFloat=(index)=>{
+    if(heroData.floats.length <= 1) return; // mínimo 1 elemento
+    const newFloats=heroData.floats.filter((_,i)=>i!==index);
+    setHeroData({...heroData,floats:newFloats});
   };
 
   const saveProduct=async f=>{
@@ -361,13 +415,14 @@ function Admin({data,setData,setPage}){
     h('div',{className:'admin-wrap'},
       h('div',{className:'admin-header'},
         h('div',{className:'admin-title'},'Panel Admin'),
-        tab==='products'
-          ? h('button',{className:'btn-save',disabled:saving,onClick:()=>{closeForm();setShowFormP(true)}},'+ Producto')
-          : h('button',{className:'btn-save',disabled:saving,onClick:()=>{closeForm();setShowFormN(true)}},'+ Noticia')
+        (tab==='products'||tab==='news')
+          ? h('button',{className:'btn-save',disabled:saving,onClick:()=>{closeForm();tab==='products'?setShowFormP(true):setShowFormN(true)}},'+'+(tab==='products'?' Producto':' Noticia'))
+          : null
       ),
       h('div',{className:'admin-tabs'},
         h('button',{className:'admin-tab'+(tab==='products'?' active':''),onClick:()=>{setTab('products');closeForm()}},'Productos ('+products.length+')'),
-        h('button',{className:'admin-tab'+(tab==='news'?' active':''),onClick:()=>{setTab('news');closeForm()}},'Noticias ('+news.length+')')
+        h('button',{className:'admin-tab'+(tab==='news'?' active':''),onClick:()=>{setTab('news');closeForm()}},'Noticias ('+news.length+')'),
+        h('button',{className:'admin-tab'+(tab==='settings'?' active':''),onClick:()=>{setTab('settings');closeForm()}},'Configuración')
       ),
 
       tab==='products'&&h('div',null,
@@ -385,9 +440,9 @@ function Admin({data,setData,setPage}){
             ),
             h('div',{className:'admin-item-info'},
               h('div',{className:'admin-item-name'},p.name),
-              h('div',{className:'admin-item-sub'},p.category+(p.featured?' · ★ Favorito':''))
+              h('div',{className:'admin-item-sub'},p.category+(p.featured?' · ★ Favorito':'')+(p.soldOut?' · Agotado':''))
             ),
-            h('div',{className:'admin-item-price'},p.price),
+            h('div',{className:'admin-item-price'},'$'+p.price),
             h('div',{className:'admin-actions'},
               h('button',{className:'btn-edit',disabled:saving,onClick:()=>{setEditP(p);setShowFormP(false)}},'Editar'),
               h('button',{className:'btn-del',disabled:saving,onClick:()=>delProduct(p.id)},'✕')
@@ -415,6 +470,85 @@ function Admin({data,setData,setPage}){
             )
           ))
         )
+      ),
+
+      tab==='settings'&&h('div',null,
+        h('div',{style:{background:'var(--white)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'1.25rem',marginBottom:'1.25rem'}},
+          h('div',{style:{fontSize:'14px',fontWeight:'500',color:'var(--warm)',marginBottom:'1rem'}},'Configuración de Contacto'),
+          h('div',{className:'form-group'},
+            h('label',{className:'form-label'},'Número de WhatsApp'),
+            h('input',{className:'form-input',value:whatsapp,onChange:e=>setWhatsapp(e.target.value),placeholder:'Ej. 18291234567 (sin espacios ni símbolos)'})
+          ),
+          h('div',{style:{fontSize:'12px',color:'var(--gray)',marginTop:'4px'}},'Este número se usará para los botones "Pedir por WhatsApp"'),
+          h('div',{className:'form-actions'},
+            h('button',{className:'btn-save',disabled:saving,onClick:saveWhatsapp},saving?'Guardando...':'Guardar número')
+          )
+        ),
+        h('div',{style:{background:'var(--white)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'1.25rem',marginBottom:'1.25rem'}},
+          h('div',{style:{fontSize:'14px',fontWeight:'500',color:'var(--warm)',marginBottom:'1rem'}},'Sección Hero'),
+          h('div',{className:'form-group'},
+            h('label',{className:'form-label'},'Etiqueta superior ',h('span',{style:{color:'var(--rose)'}},'*')),
+            h('input',{className:'form-input',value:heroData.tag,onChange:e=>setHeroData({...heroData,tag:e.target.value}),placeholder:'Ej. Dulcería artesanal ✦ Hecho con amor'})
+          ),
+          h('div',{className:'form-group'},
+            h('label',{className:'form-label'},'Título principal ',h('span',{style:{color:'var(--rose)'}},'*')),
+            h('div',{style:{display:'flex',gap:'8px',alignItems:'flex-end'}},
+              h('input',{className:'form-input',value:heroData.title,onChange:e=>setHeroData({...heroData,title:e.target.value}),placeholder:'Ej. Donde cada dulce es una obra de arte',style:{flex:1}}),
+              h('div',{style:{display:'flex',flexDirection:'column',gap:'4px'}},
+                h('label',{style:{fontSize:'11px',color:'var(--gray)'}},'Color'),
+                h('input',{className:'form-input',type:'color',value:heroData.titleColor||'#3D2B1F',onChange:e=>setHeroData({...heroData,titleColor:e.target.value}),style:{width:'50px',height:'36px',padding:'2px',cursor:'pointer'}})
+              )
+            )
+          ),
+          h('div',{className:'form-group'},
+            h('label',{className:'form-label'},'Subtítulo descriptivo ',h('span',{style:{color:'var(--rose)'}},'*')),
+            h('textarea',{className:'form-textarea',value:heroData.subtitle,onChange:e=>setHeroData({...heroData,subtitle:e.target.value}),placeholder:'Describe tu negocio y lo que ofreces...',rows:3})
+          ),
+          h('div',{style:{marginTop:'1.5rem',marginBottom:'1rem'}},
+            h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.75rem'}},
+              h('label',{className:'form-label',style:{marginBottom:'0'}},'Elementos destacados ('+heroData.floats.length+')'),
+              h('div',{style:{display:'flex',gap:'6px'}},
+                h('button',{className:'btn-save',disabled:heroData.floats.length>=6,onClick:addHeroFloat,style:{padding:'6px 12px',fontSize:'12px'}},'+ Añadir'),
+                h('button',{className:'btn-cancel',disabled:heroData.floats.length<=1,onClick:()=>removeHeroFloat(heroData.floats.length-1),style:{padding:'6px 12px',fontSize:'12px'}},'- Quitar')
+              )
+            ),
+            heroData.floats.map((f,i)=>h('div',{key:i,style:{border:'1px solid var(--border)',borderRadius:'6px',padding:'12px',marginBottom:'12px',background:'var(--cream)'}},
+              h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'8px'}},
+                h('div',{style:{fontSize:'12px',fontWeight:'500',color:'var(--warm-mid)'}},'Elemento '+(i+1)),
+                h('button',{className:'btn-del',onClick:()=>removeHeroFloat(i),style:{padding:'4px 8px',fontSize:'11px'},title:'Eliminar este elemento'},'×')
+              ),
+              h('div',{style:{display:'flex',gap:'8px',alignItems:'center'}},
+                h('div',{style:{display:'flex',flexDirection:'column',gap:'4px'}},
+                  h('label',{style:{fontSize:'11px',color:'var(--gray)'}},'Icono'),
+                  h('select',{className:'form-select',value:f.icon,onChange:e=>updateHeroFloat(i,'icon',e.target.value),style:{width:'110px',fontSize:'12px'}},
+                    h('option',{value:''},'Seleccionar'),
+                    h('option',{value:'truck'},'🚚 Entrega'),
+                    h('option',{value:'gift'},'🎁 Regalo'),
+                    h('option',{value:'sparkles'},'✨ Artesanal'),
+                    h('option',{value:'cake'},'🍰 Pastelería'),
+                    h('option',{value:'document'},'📄 Calidad'),
+                    h('option',{value:'gift'},'🏠 Domicilio'),
+                    h('option',{value:'sparkles'},'💎 Premium'),
+                    h('option',{value:'cake'},'🎂 Cumpleaños'),
+                    h('option',{value:'truck'},'🚀 Rápido')
+                  )
+                ),
+                h('div',{style:{display:'flex',flexDirection:'column',gap:'4px',flex:1}},
+                  h('label',{style:{fontSize:'11px',color:'var(--gray)'}},'Texto'),
+                  h('input',{className:'form-input',value:f.text,onChange:e=>updateHeroFloat(i,'text',e.target.value),placeholder:['Entrega a domicilio','Pedidos personalizados','100% artesanal','Servicio express','Calidad premium','Atención personalizada'][i] || 'Texto descriptivo',style:{fontSize:'13px'}})
+                ),
+                h('div',{style:{display:'flex',flexDirection:'column',gap:'4px'}},
+                  h('label',{style:{fontSize:'11px',color:'var(--gray)'}},'Color'),
+                  h('input',{className:'form-input',type:'color',value:f.color,onChange:e=>updateHeroFloat(i,'color',e.target.value),style:{width:'50px',height:'36px',padding:'2px',cursor:'pointer'}})
+                )
+              )
+            ))
+          ),
+          h('div',{className:'form-actions'},
+            h('button',{className:'btn-save',disabled:saving,onClick:saveHero},saving?'Guardando...':'Guardar cambios del Hero')
+          ),
+          h('div',{style:{fontSize:'12px',color:'var(--gray)',marginTop:'8px'}},'Los cambios se aplicarán inmediatamente al sitio público. Puedes añadir hasta 6 elementos destacados.')
+        )
       )
     ),
     toast&&h(Toast,{msg:toast,onDone:()=>setToast('')})
@@ -429,7 +563,23 @@ function App(){
 
   useEffect(()=>{
     loadData()
-      .then(setData)
+      .then(d=>setData({
+        whatsappNumber:'18291234567',
+        products:[],
+        news:[],
+        hero:{
+          tag:' Dulcería artesanal ✦ Hecho con amor',
+          title:'Donde cada dulce es una obra de arte',
+          titleColor:'#3D2B1F',
+          subtitle:'Creamos experiencias dulces únicas, elaboradas a mano con los mejores ingredientes.',
+          floats:[
+            {icon:'truck', text:'Entrega a domicilio', color:'#F5DCE1'},
+            {icon:'gift', text:'Pedidos personalizados', color:'#F0E0C0'},
+            {icon:'sparkles', text:'100% artesanal', color:'#DCF5E8'}
+          ]
+        },
+        ...d
+      }))
       .catch(()=>setError('No se pudo conectar con la base de datos.'));
   },[]);
 
@@ -441,7 +591,7 @@ function App(){
 
   if(page==='login') return h(Login,{setPage});
   if(page==='admin') return h(Admin,{data,setData,setPage});
-  return h(PublicSite,{products:data.products||[],news:data.news||[],setPage});
+  return h(PublicSite,{products:data.products||[],news:data.news||[],whatsappNumber:data.whatsappNumber||'18291234567',hero:data.hero,setPage});
 }
 
 ReactDOM.createRoot(document.getElementById('app')).render(h(App));

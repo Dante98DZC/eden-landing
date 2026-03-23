@@ -9,7 +9,7 @@ Sitio web responsive para la dulcería Sweet Eden, un negocio pequeño especiali
 - **Catálogo de productos** con categorías, precios y descripciones
 - **Sistema de administración** con CRUD completo para productos y noticias
 - **Integración con WhatsApp** para pedidos directos
-- **Almacenamiento local** para persistencia de datos
+- **Almacenamiento en Jsonbin** para persistencia de datos
 - **Sección de noticias** para anuncios e información
 
 ## Estructura del proyecto
@@ -18,12 +18,6 @@ Sitio web responsive para la dulcería Sweet Eden, un negocio pequeño especiali
 eden-landing/
 ├── index.html          # Archivo principal con la aplicación React
 ├── base.css           # Estilos CSS modernos y responsive
-└── Res/               # Carpeta con imágenes de productos
-    ├── IMG-20250808-WA0018.jpg
-    ├── IMG-20250811-WA0001.jpg
-    └── ... (más imágenes)
-```
-
 ## Cómo usar
 
 1. **Abrir el sitio**: Abre `index.html` en cualquier navegador moderno
@@ -32,7 +26,7 @@ eden-landing/
 4. **Panel de administración**:
    - Haz clic en "Admin" en la navegación
    - Usuario: `admin`
-   - Contraseña: `sweeteden2025`
+   - Contraseña: `123`
    - Gestiona productos y noticias desde el panel
 
 ## Funcionalidades del admin
