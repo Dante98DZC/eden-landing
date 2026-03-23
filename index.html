@@ -19,11 +19,6 @@ const h=React.createElement;
 const BIN_ID  = "69be0ee4b7ec241ddc8a64fc";
 const API_KEY = "$2a$10$0HKBnvyt.BnoxpApmO5aJO4ZjK1QlXRaZcglh7WCi/XesRwppyhUO";
 const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
-const HEADERS = {
-  "Content-Type": "application/json",
-  "X-Access-Key": API_KEY,
-  "X-Bin-Versioning": "false"   // siempre sobreescribe, sin historial de versiones
-};
 
 async function loadData(){
   const res = await fetch(BIN_URL+"/latest", {headers:{"X-Access-Key":API_KEY}});
@@ -52,6 +47,18 @@ function Icon({name,style}){
   return h('img',{src:M[name]||M.cake,alt:name,style:Object.assign({width:'18px',height:'18px',display:'inline-block'},style||{})});
 }
 
+// Available hero icons for the Hero section (id,label,url)
+const HERO_ICONS = [
+  {id:'truck', label:'Entrega', url:'https://unpkg.com/heroicons@2.0.13/24/outline/truck.svg'},
+  {id:'gift', label:'Regalo', url:'https://unpkg.com/heroicons@2.0.13/24/outline/gift.svg'},
+  {id:'sparkles', label:'Artesanal', url:'https://unpkg.com/heroicons@2.0.13/24/outline/sparkles.svg'},
+  {id:'cake', label:'Pastelería', url:'https://unpkg.com/heroicons@2.0.13/24/outline/cake.svg'},
+  {id:'document', label:'Calidad', url:'https://unpkg.com/heroicons@2.0.13/24/outline/document-text.svg'},
+  {id:'tag', label:'Etiqueta', url:'https://unpkg.com/heroicons@2.0.13/24/outline/tag.svg'},
+  {id:'sparkles', label:'Premium', url:'https://unpkg.com/heroicons@2.0.13/24/outline/sparkles.svg'},
+  {id:'truck', label:'Rápido', url:'https://unpkg.com/heroicons@2.0.13/24/outline/truck.svg'}
+];
+
 // ── Date helpers ──────────────────────────────────────────────
 function formatDate(d){
   try{const dt=new Date(d);if(isNaN(dt))return d;return dt.toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})}catch{return d}
@@ -73,9 +80,6 @@ function Spinner(){
     h('span',{style:{fontSize:'13px'}},'Cargando...')
   );
 }
-
-// ── Category list ─────────────────────────────────────────────
-const CATS=["Todos","Galletas","Donas","Cajas","Frituras","Cupcakes","Especiales"];
 
 // ── ProductCard ───────────────────────────────────────────────
 function ProductCard({p,onClick,whatsappNumber}){
@@ -172,7 +176,7 @@ function PublicSite({products,news,whatsappNumber,hero,setPage,categories}){
     ),
     h('div',{id:'productos',className:'section'},
       h('div',{className:'section-header'},
-        h('div',{className:'section-title'},'Nuestras Ofertas')
+        h('div',{className:'section-title'},'Ofertas')
       ),
       h('div',{className:'cats'},
         cats.map(c=>h('button',{key:c,className:'cat-btn'+(cat===c?' active':''),onClick:()=>setCat(c)},c))
@@ -184,7 +188,6 @@ function PublicSite({products,news,whatsappNumber,hero,setPage,categories}){
     h('div',{id:'noticias',className:'section'},
       h('div',{className:'section-header'},
         h('div',null,
-          h('div',{className:'section-subtitle'},'Novedades'),
           h('div',{className:'section-title'},'Noticias')
         )
       ),
@@ -199,7 +202,7 @@ function PublicSite({products,news,whatsappNumber,hero,setPage,categories}){
         h('button',{className:'contact-btn',onClick:()=>window.open(`https://wa.me/${(whatsappNumber||'18291234567').replace(/[^0-9]+/g,'')}`,'_blank')},h(Icon,{name:'sparkles'}),' WhatsApp'),
       )
     ),
-    h('footer',null,h('strong',null,'Sweet Eden'),' · Dulcería artesanal · © 2025'),
+    h('footer',null,h('strong',null,'Sweet Eden'),' · Dabar Market · © 2026'),
     modal&&h(ProductModal,{p:modal,onClose:()=>setModal(null),whatsappNumber:whatsappNumber})
   );
 }
@@ -468,7 +471,7 @@ function Admin({data,setData,setPage}){
             ),
             h('div',{className:'admin-item-price'},'$'+p.price),
             h('div',{className:'admin-actions'},
-              h('button',{className:'btn-edit',disabled:saving,onClick:()=>{setEditP(p);setShowFormP(false)}},'Editar'),
+              h('button',{className:'btn-edit',disabled:saving,onClick:()=>{setEditP(p);setShowFormP(true)}},'Editar'),
               h('button',{className:'btn-del',disabled:saving,onClick:()=>delProduct(p.id)},'✕')
             )
           ))
@@ -489,7 +492,7 @@ function Admin({data,setData,setPage}){
               h('div',{className:'admin-item-sub'},formatDate(n.date))
             ),
             h('div',{className:'admin-actions'},
-              h('button',{className:'btn-edit',disabled:saving,onClick:()=>{setEditN(n);setShowFormN(false)}},'Editar'),
+              h('button',{className:'btn-edit',disabled:saving,onClick:()=>{setEditN(n);setShowFormN(true)}},'Editar'),
               h('button',{className:'btn-del',disabled:saving,onClick:()=>delNews(n.id)},'✕')
             )
           ))
