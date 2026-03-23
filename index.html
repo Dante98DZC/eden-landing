@@ -18,13 +18,28 @@ const h=React.createElement;
 // ── CONFIG ────────────────────────────────────────────────────
 const SUPABASE_URL = "https://ocvtaecffnifyfqekbdf.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jdnRhZWNmZm5pZnlmcWVrYmRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyODEwNjEsImV4cCI6MjA4OTg1NzA2MX0.Y1RUGeHgDnLWAvMh2ahwwI_gXQdyPfTBeG868-cbaXs";
-const SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jdnRhZWNmZm5pZnlmcWVrYmRmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDI4MTA2MSwiZXhwIjoyMDg5ODU3MDYxfQ.VM1lILnU_D3XRDSjDHZzxItCu7_sW0S1ZlknPgykXS0";
+// NOTA: Asegúrate de tener Row Level Security (RLS) activado en Supabase
+// con policies que permitan writes solo a usuarios autenticados.
 
-// Helper para hacer requests a Supabase REST API
-async function supabaseRequest(method, path, body = null, useServiceKey = false) {
+// ── Auth token (Supabase Auth) ─────────────────────────────────
+let _authToken = null;
+function setAuthToken(token){ _authToken = token; }
+function getAuthToken(){ return _authToken; }
+
+// ── WhatsApp helper ────────────────────────────────────────────
+const DEFAULT_WHATSAPP = '18291234567';
+function buildWhatsappUrl(number, text){
+  const phone = (number || DEFAULT_WHATSAPP).replace(/[^0-9]+/g,'');
+  return text
+    ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
+    : `https://wa.me/${phone}`;
+}
+
+// ── Helper para hacer requests a Supabase REST API ─────────────
+async function supabaseRequest(method, path, body = null) {
   const url = `${SUPABASE_URL}/rest/v1/${path}`;
-  const token = useServiceKey ? SUPABASE_SERVICE_KEY : SUPABASE_ANON_KEY;
-  
+  const token = getAuthToken() || SUPABASE_ANON_KEY;
+
   const headers = {
     "Content-Type": "application/json",
     "apikey": SUPABASE_ANON_KEY,
@@ -32,25 +47,16 @@ async function supabaseRequest(method, path, body = null, useServiceKey = false)
     "Prefer": "return=representation"
   };
 
-  const config = {
-    method,
-    headers
-  };
-  
-  if (body) {
-    config.body = JSON.stringify(body);
-  }
+  const config = { method, headers };
+  if (body) config.body = JSON.stringify(body);
 
-  console.log(`[Supabase ${method}] ${path}${body ? ' with body: '+JSON.stringify(body).slice(0,100):''}...`);
-  
   const res = await fetch(url, config);
   const text = await res.text();
-  
+
   if (!res.ok) {
-    console.error(`[Supabase Error ${res.status}]`, text);
     throw new Error(`Supabase (${res.status}): ${text}`);
   }
-  
+
   try {
     return text ? JSON.parse(text) : null;
   } catch {
@@ -58,9 +64,41 @@ async function supabaseRequest(method, path, body = null, useServiceKey = false)
   }
 }
 
+// ── Defaults centralizados ─────────────────────────────────────
+const DEFAULT_HERO = {
+  tag: ' Dulcería artesanal ✦ Hecho con amor',
+  title: 'Donde cada dulce es una obra de arte',
+  titleColor: '#3D2B1F',
+  subtitle: 'Creamos experiencias dulces únicas, elaboradas a mano con los mejores ingredientes.',
+  floats: [
+    {icon:'truck', text:'Entrega a domicilio', color:'#F5DCE1'},
+    {icon:'gift', text:'Pedidos personalizados', color:'#F0E0C0'},
+    {icon:'sparkles', text:'100% artesanal', color:'#DCF5E8'}
+  ]
+};
+
+// Normaliza un producto: limpia campos que no existen en la DB
+function normalizeProduct(p){
+  const {desc, category_id, ...rest} = p;
+  return {...rest, description: p.description || desc || ''};
+}
+
+// Prepara un producto para enviar a Supabase (solo campos válidos de la tabla)
+function sanitizeProduct(p){
+  return {
+    name: p.name,
+    category: p.category,
+    price: p.price,
+    description: p.description || '',
+    image_url: p.image_url || '',
+    featured: !!p.featured,
+    soldOut: !!p.soldOut,
+    ...(p.position !== undefined && {position: p.position})
+  };
+}
+
 async function loadData(){
   try {
-    // Cargar todas las tablas en paralelo
     const [products, news, config, categories] = await Promise.all([
       supabaseRequest("GET", "products?order=position.asc,id.asc"),
       supabaseRequest("GET", "news?order=date.desc"),
@@ -68,110 +106,56 @@ async function loadData(){
       supabaseRequest("GET", "categories?order=name.asc")
     ]);
 
-    // Extraer hero y whatsapp de site_config
-    let whatsappNumber = "18291234567";
-    let hero = {
-      tag: " Dulcería artesanal ✦ Hecho con amor",
-      title: "Donde cada dulce es una obra de arte",
-      titleColor: "#3D2B1F",
-      subtitle: "Creamos experiencias dulces únicas, elaboradas a mano con los mejores ingredientes.",
-      floats: [
-        {icon:"truck",text:"Entrega a domicilio",color:"#F5DCE1"},
-        {icon:"gift",text:"Pedidos personalizados",color:"#F0E0C0"},
-        {icon:"sparkles",text:"100% artesanal",color:"#DCF5E8"}
-      ]
-    };
+    let whatsappNumber = DEFAULT_WHATSAPP;
+    let hero = DEFAULT_HERO;
 
-    if (config && Array.isArray(config) && config.length > 0) {
+    if (Array.isArray(config)) {
       config.forEach(item => {
         if (item.key === "whatsapp_number") whatsappNumber = item.value;
         if (item.key === "hero" && item.value) hero = item.value;
       });
     }
 
-    console.log("[Data Loaded]", {products: products?.length||0, news: news?.length||0, categories: categories?.length||0});
-    
     return {
-      products: products || [],
+      products: (products || []).map(normalizeProduct),
       news: news || [],
-      whatsappNumber: whatsappNumber,
+      whatsappNumber,
       categories: categories || [],
-      hero: hero
+      hero
     };
   } catch (error) {
-    console.error("Error cargando datos:", error);
     throw error;
   }
 }
 
-async function saveData(data){
+// Guarda un solo ítem (product, news o category)
+// action: 'save' | 'delete'
+async function saveItem(table, item, action = 'save') {
+  if (action === 'delete') {
+    return supabaseRequest("DELETE", `${table}?id=eq.${item.id}`);
+  }
+  const {id, ...rest} = item;
+  // Para productos, filtrar solo los campos que existen en la tabla
+  const body = table === 'products' ? sanitizeProduct(rest) : rest;
+  if (id) {
+    return supabaseRequest("PATCH", `${table}?id=eq.${id}`, body);
+  } else {
+    const result = await supabaseRequest("POST", table, body);
+    return result?.[0] || result;
+  }
+}
+
+// Guarda un valor de configuración global (site_config)
+async function saveConfig(key, value) {
   try {
-    // Usar service key para escrituras
-    
-    // Guardar/actualizar products
-    if (data.products && Array.isArray(data.products)) {
-      for (const product of data.products) {
-        const {id, ...rest} = product;
-        if (id) {
-          // UPDATE
-          await supabaseRequest("PATCH", `products?id=eq.${id}`, rest, true);
-        } else {
-          // INSERT (Supabase genera el ID)
-          const newProduct = await supabaseRequest("POST", "products", {...rest}, true);
-          product.id = newProduct[0]?.id;
-        }
-      }
-    }
-
-    // Guardar/actualizar news
-    if (data.news && Array.isArray(data.news)) {
-      for (const article of data.news) {
-        const {id, ...rest} = article;
-        if (id) {
-          await supabaseRequest("PATCH", `news?id=eq.${id}`, rest, true);
-        } else {
-          const newArticle = await supabaseRequest("POST", "news", {...rest}, true);
-          article.id = newArticle[0]?.id;
-        }
-      }
-    }
-
-    // Guardar configuración global (whatsapp_number y hero)
-    if (data.whatsappNumber) {
-      try {
-        await supabaseRequest("PATCH", `site_config?key=eq.whatsapp_number`, {value: data.whatsappNumber}, true);
-      } catch {
-        await supabaseRequest("POST", "site_config", {key: "whatsapp_number", value: data.whatsappNumber}, true);
-      }
-    }
-
-    if (data.hero) {
-      try {
-        await supabaseRequest("PATCH", `site_config?key=eq.hero`, {value: data.hero}, true);
-      } catch {
-        await supabaseRequest("POST", "site_config", {key: "hero", value: data.hero}, true);
-      }
-    }
-
-    // Guardar categories
-    if (data.categories && Array.isArray(data.categories)) {
-      for (const category of data.categories) {
-        const {id, ...rest} = category;
-        if (id) {
-          await supabaseRequest("PATCH", `categories?id=eq.${id}`, rest, true);
-        } else {
-          const newCat = await supabaseRequest("POST", "categories", {...rest}, true);
-          category.id = newCat[0]?.id;
-        }
-      }
-    }
-
-    console.log("[Data Saved Successfully]");
-  } catch (error) {
-    console.error("Error guardando datos:", error);
-    throw error;
+    await supabaseRequest("PATCH", `site_config?key=eq.${key}`, {value});
+  } catch {
+    await supabaseRequest("POST", "site_config", {key, value});
   }
 }
+
+// Mantener saveData por compatibilidad (no se usa para saves individuales)
+async function saveData(data){ /* legacy - ver saveItem y saveConfig */ }
 
 // ── Icon helper ───────────────────────────────────────────────
 function Icon({name,style}){
@@ -188,14 +172,12 @@ function Icon({name,style}){
 
 // Available hero icons for the Hero section (id,label,url)
 const HERO_ICONS = [
-  {id:'truck', label:'Entrega', url:'https://unpkg.com/heroicons@2.0.13/24/outline/truck.svg'},
-  {id:'gift', label:'Regalo', url:'https://unpkg.com/heroicons@2.0.13/24/outline/gift.svg'},
-  {id:'sparkles', label:'Artesanal', url:'https://unpkg.com/heroicons@2.0.13/24/outline/sparkles.svg'},
-  {id:'cake', label:'Pastelería', url:'https://unpkg.com/heroicons@2.0.13/24/outline/cake.svg'},
-  {id:'document', label:'Calidad', url:'https://unpkg.com/heroicons@2.0.13/24/outline/document-text.svg'},
-  {id:'tag', label:'Etiqueta', url:'https://unpkg.com/heroicons@2.0.13/24/outline/tag.svg'},
-  {id:'sparkles', label:'Premium', url:'https://unpkg.com/heroicons@2.0.13/24/outline/sparkles.svg'},
-  {id:'truck', label:'Rápido', url:'https://unpkg.com/heroicons@2.0.13/24/outline/truck.svg'}
+  {id:'truck',    label:'Entrega',    url:'https://unpkg.com/heroicons@2.0.13/24/outline/truck.svg'},
+  {id:'gift',     label:'Regalo',     url:'https://unpkg.com/heroicons@2.0.13/24/outline/gift.svg'},
+  {id:'sparkles', label:'Artesanal',  url:'https://unpkg.com/heroicons@2.0.13/24/outline/sparkles.svg'},
+  {id:'cake',     label:'Pastelería', url:'https://unpkg.com/heroicons@2.0.13/24/outline/cake.svg'},
+  {id:'document', label:'Calidad',    url:'https://unpkg.com/heroicons@2.0.13/24/outline/document-text.svg'},
+  {id:'tag',      label:'Etiqueta',   url:'https://unpkg.com/heroicons@2.0.13/24/outline/tag.svg'}
 ];
 
 // ── Date helpers ──────────────────────────────────────────────
@@ -222,8 +204,7 @@ function Spinner(){
 
 // ── ProductCard ───────────────────────────────────────────────
 function ProductCard({p,onClick,whatsappNumber}){
-  const phone = whatsappNumber || '18291234567';
-  const orderUrl = `https://wa.me/${phone.replace(/[^0-9]+/g,'')}?text=Hola! Me interesa pedir: ${encodeURIComponent(p.name+' ('+p.price+')')}`;
+  const orderUrl = buildWhatsappUrl(whatsappNumber, 'Hola! Me interesa pedir: '+p.name+' ('+p.price+')');
   return h('div',{className:'product-card'+(p.soldOut?' sold-out':''),onClick:()=>onClick(p)},
     p.image_url
       ? h('img',{src:p.image_url,alt:p.name,className:'product-img',onError:e=>{e.target.style.display='none'}})
@@ -261,8 +242,7 @@ function NewsCard({n}){
 // ── ProductModal ──────────────────────────────────────────────
 function ProductModal({p,onClose,whatsappNumber}){
   if(!p)return null;
-  const phone = whatsappNumber || '18291234567';
-  const orderUrl = `https://wa.me/${phone.replace(/[^0-9]+/g,'')}?text=Hola! Me interesa pedir: ${encodeURIComponent(p.name+' ('+p.price+')')}`;
+  const orderUrl = buildWhatsappUrl(whatsappNumber, 'Hola! Me interesa pedir: '+p.name+' ('+p.price+')');
   return h('div',{className:'modal-overlay',onClick:onClose},
     h('div',{className:'modal',onClick:e=>e.stopPropagation()},
       h('div',{className:'modal-handle'}),
@@ -274,7 +254,7 @@ function ProductModal({p,onClose,whatsappNumber}){
       h('div',{className:'modal-title'},p.name),
       h('div',{className:'modal-price'},'$'+p.price),
       p.soldOut&&h('div',{className:'product-outstock'},'Agotado'),
-      h('div',{className:'modal-desc'},p.description||p.desc),
+      h('div',{className:'modal-desc'},p.description||''),
       h('div',{className:'modal-actions'},
         h('button',{className:'btn-primary',style:{flex:1},disabled:p.soldOut,onClick:()=>{ if(!p.soldOut) window.open(orderUrl,'_blank'); }},h(Icon,{name:'sparkles'}),(p.soldOut?' Agotado':' Pedir por WhatsApp')),
         h('button',{className:'btn-secondary',onClick:onClose},'Cerrar')
@@ -338,7 +318,7 @@ function PublicSite({products,news,whatsappNumber,hero,setPage,categories}){
       h('h2',null,'¿Lista para ordenar?'),
       h('p',null,'Escríbenos directamente y te atenderemos con gusto.'),
       h('div',{className:'contact-buttons'},
-        h('button',{className:'contact-btn',onClick:()=>window.open(`https://wa.me/${(whatsappNumber||'18291234567').replace(/[^0-9]+/g,'')}`,'_blank')},h(Icon,{name:'sparkles'}),' WhatsApp'),
+        h('button',{className:'contact-btn',onClick:()=>window.open(buildWhatsappUrl(whatsappNumber),'_blank')},h(Icon,{name:'sparkles'}),' WhatsApp'),
       )
     ),
     h('footer',null,h('strong',null,'Sweet Eden'),' · Dabar Market · © 2026'),
@@ -346,14 +326,28 @@ function PublicSite({products,news,whatsappNumber,hero,setPage,categories}){
   );
 }
 
-// ── LOGIN ─────────────────────────────────────────────────────
+// ── LOGIN (Supabase Auth) ──────────────────────────────────────
 function Login({setPage}){
-  const [user,setUser]=useState('');
+  const [email,setEmail]=useState('');
   const [pass,setPass]=useState('');
   const [err,setErr]=useState('');
-  const submit=()=>{
-    if(user==='admin'&&pass==='123'){setPage('admin');setErr('');}
-    else setErr('Usuario o contraseña incorrectos');
+  const [loading,setLoading]=useState(false);
+  const submit=async()=>{
+    if(!email.trim()||!pass.trim()){setErr('Ingresa email y contraseña');return;}
+    setLoading(true);setErr('');
+    try{
+      const res=await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY},
+        body:JSON.stringify({email,password:pass})
+      });
+      const data=await res.json();
+      if(!res.ok||!data.access_token){setErr(data.error_description||data.msg||'Credenciales incorrectas');return;}
+      setAuthToken(data.access_token);
+      setPage('admin');
+    }catch{
+      setErr('Error de conexión. Intenta de nuevo.');
+    }finally{setLoading(false);}
   };
   return h('div',{className:'login-wrap'},
     h('div',{className:'login-card'},
@@ -361,14 +355,14 @@ function Login({setPage}){
       h('div',{className:'login-sub'},'Panel de administración'),
       err&&h('div',{className:'login-error'},err),
       h('div',{className:'form-group'},
-        h('label',{className:'form-label'},'Usuario'),
-        h('input',{className:'form-input',value:user,onChange:e=>setUser(e.target.value),placeholder:'admin'})
+        h('label',{className:'form-label'},'Email'),
+        h('input',{className:'form-input',type:'email',value:email,onChange:e=>setEmail(e.target.value),placeholder:'admin@sweeteden.com'})
       ),
       h('div',{className:'form-group'},
         h('label',{className:'form-label'},'Contraseña'),
         h('input',{className:'form-input',type:'password',value:pass,onChange:e=>setPass(e.target.value),onKeyDown:e=>e.key==='Enter'&&submit(),placeholder:'••••••••'})
       ),
-      h('button',{className:'btn-save',style:{width:'100%'},onClick:submit},'Entrar'),
+      h('button',{className:'btn-save',style:{width:'100%'},disabled:loading,onClick:submit},loading?'Entrando...':'Entrar'),
       h('div',{style:{textAlign:'center',marginTop:'1rem'}},
         h('button',{className:'btn-cancel',onClick:()=>setPage('home')},'← Volver al sitio')
       )
@@ -378,8 +372,8 @@ function Login({setPage}){
 
 // ── PRODUCT FORM ──────────────────────────────────────────────
 function ProductForm({item,onSave,onCancel,saving,categories}){
-  const blank={id:null,name:'',category:categories[0]?.name||'Galletas',price:'',desc:'',featured:false,image_url:'',soldOut:false};
-  const [f,setF]=useState(item||blank);
+  const blank={name:'',category:categories[0]?.name||'Galletas',price:'',description:'',featured:false,image_url:'',soldOut:false};
+  const [f,setF]=useState(item?normalizeProduct(item):blank);
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
   return h('div',null,
     h('div',{className:'form-row'},
@@ -404,7 +398,7 @@ function ProductForm({item,onSave,onCancel,saving,categories}){
     ),
     h('div',{className:'form-group'},
       h('label',{className:'form-label'},'Descripción'),
-      h('textarea',{className:'form-textarea',value:f.description||f.desc,onChange:e=>set('description',e.target.value),placeholder:'Describe el producto...'})
+      h('textarea',{className:'form-textarea',value:f.description||'',onChange:e=>set('description',e.target.value),placeholder:'Describe el producto...'})
     ),
     h('div',{style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'1rem'}},
       h('input',{type:'checkbox',id:'featured',checked:f.featured,onChange:e=>set('featured',e.target.checked),style:{accentColor:'#C9667A'}}),
@@ -457,12 +451,8 @@ function NewsForm({item,onSave,onCancel,saving}){
 function Admin({data,setData,setPage}){
   const {products,news,whatsappNumber='',categories=[],hero={}}=data;
   const [whatsapp,setWhatsapp]=useState(whatsappNumber||'');
-  const [heroData,setHeroData]=useState(hero||{tag:'',title:'',subtitle:'',floats:[{icon:'',text:'',color:''},{icon:'',text:'',color:''},{icon:'',text:'',color:''}]});
-  const [categoriesData,setCategoriesData]=useState(
-    (categories||['Galletas','Donas','Cajas','Frituras','Cupcakes','Especiales']).map((c,i)=>
-      typeof c === 'string' ? {id: Date.now() + i, name: c} : c
-    )
-  );
+  const [heroData,setHeroData]=useState(hero||DEFAULT_HERO);
+  const [categoriesData,setCategoriesData]=useState(categories||[]);
   const [tab,setTab]=useState('products');
   const [editP,setEditP]=useState(null);
   const [editN,setEditN]=useState(null);
@@ -472,35 +462,38 @@ function Admin({data,setData,setPage}){
   const [showFormC,setShowFormC]=useState(false);
   const [saving,setSaving]=useState(false);
   const [toast,setToast]=useState('');
-  useEffect(()=>{setWhatsapp(whatsappNumber||'');setHeroData(hero||{tag:' Dulcería artesanal ✦ Hecho con amor',title:'Donde cada dulce es una obra de arte',titleColor:'#3D2B1F',subtitle:'Creamos experiencias dulces únicas, elaboradas a mano con los mejores ingredientes.',floats:[{icon:'truck',text:'Entrega a domicilio',color:'#F5DCE1'},{icon:'gift',text:'Pedidos personalizados',color:'#F0E0C0'},{icon:'sparkles',text:'100% artesanal',color:'#DCF5E8'}]});setCategoriesData((categories||['Galletas','Donas','Cajas','Frituras','Cupcakes','Especiales']).map((c,i)=>typeof c === 'string' ? {id: Date.now() + i, name: c} : c));},[whatsappNumber,hero,categories]);
+  useEffect(()=>{setWhatsapp(whatsappNumber||'');setHeroData(hero||DEFAULT_HERO);setCategoriesData(categories||[]);},[whatsappNumber,hero,categories]);
 
   const showToast=msg=>{setToast(msg);setTimeout(()=>setToast(''),2400)};
 
-  const persist=async(newData)=>{
+  // Wrapper genérico: ejecuta fn async, maneja saving/error
+  const withSaving=async(fn)=>{
     setSaving(true);
-    try{await saveData(newData);setData(newData);}
-    catch{showToast('❌ Error al guardar. Revisa tu conexión.');}
-    finally{setSaving(false);}
+    try{ await fn(); }
+    catch(e){ showToast('❌ Error al guardar: '+(e?.message||'Revisa tu conexión.')); }
+    finally{ setSaving(false); }
   };
 
   const saveWhatsapp=async()=>{
     if(!whatsapp.trim()){showToast('⚠ Ingresa un número de WhatsApp');return;}
-    await persist({...data,whatsappNumber:whatsapp.trim()});
-    showToast('✓ Número de WhatsApp guardado');
+    await withSaving(async()=>{
+      await saveConfig('whatsapp_number', whatsapp.trim());
+      setData(d=>({...d,whatsappNumber:whatsapp.trim()}));
+      showToast('✓ Número de WhatsApp guardado');
+    });
   };
 
   const saveHero=async()=>{
     if(!heroData.tag.trim()){showToast('⚠ La etiqueta superior es requerida');return;}
     if(!heroData.title.trim()){showToast('⚠ El título es requerido');return;}
     if(!heroData.subtitle.trim()){showToast('⚠ El subtítulo es requerido');return;}
-    
-    const validFloats = heroData.floats.filter(f => f.icon && f.text.trim());
-    if(validFloats.length === 0){
-      showToast('⚠ Al menos un elemento destacado debe tener icono y texto');return;
-    }
-    
-    await persist({...data,hero:heroData});
-    showToast('✓ Sección Hero actualizada correctamente ('+validFloats.length+' elementos)');
+    const validFloats=heroData.floats.filter(f=>f.icon&&f.text.trim());
+    if(validFloats.length===0){showToast('⚠ Al menos un elemento destacado debe tener icono y texto');return;}
+    await withSaving(async()=>{
+      await saveConfig('hero', heroData);
+      setData(d=>({...d,hero:heroData}));
+      showToast('✓ Sección Hero actualizada ('+validFloats.length+' elementos)');
+    });
   };
 
   const updateHeroFloat=(index,field,value)=>{
@@ -522,50 +515,84 @@ function Admin({data,setData,setPage}){
   };
 
   const saveProduct=async f=>{
-    if(!f.name||!f.price){showToast('⚠ Completa nombre y precio');return}
-    let newProducts;
-    if(f.id){newProducts=products.map(p=>p.id===f.id?f:p);showToast('✓ Producto actualizado');}
-    else{newProducts=[...products,{...f,id:Date.now()}];showToast('✓ Producto agregado');}
-    await persist({...data,products:newProducts});
-    setEditP(null);setShowFormP(false);
+    if(!f.name||!f.price){showToast('⚠ Completa nombre y precio');return;}
+    await withSaving(async()=>{
+      const saved = await saveItem('products', f);
+      const savedItem = f.id ? f : {...f, id: saved?.id};
+      setData(d=>({
+        ...d,
+        products: f.id
+          ? d.products.map(p=>p.id===f.id ? savedItem : p)
+          : [...d.products, savedItem]
+      }));
+      showToast(f.id?'✓ Producto actualizado':'✓ Producto agregado');
+      setEditP(null);setShowFormP(false);
+    });
   };
 
   const delProduct=async id=>{
     if(!confirm('¿Eliminar este producto?'))return;
-    await persist({...data,products:products.filter(p=>p.id!==id)});
-    showToast('Producto eliminado');
+    await withSaving(async()=>{
+      await saveItem('products', {id}, 'delete');
+      setData(d=>({...d, products: d.products.filter(p=>p.id!==id)}));
+      showToast('Producto eliminado');
+    });
   };
 
   const saveNews=async f=>{
-    if(!f.title){showToast('⚠ El título es requerido');return}
-    let newNews;
-    if(f.id){newNews=news.map(n=>n.id===f.id?f:n);showToast('✓ Noticia actualizada');}
-    else{newNews=[{...f,id:Date.now()},...news];showToast('✓ Noticia publicada');}
-    await persist({...data,news:newNews});
-    setEditN(null);setShowFormN(false);
+    if(!f.title){showToast('⚠ El título es requerido');return;}
+    await withSaving(async()=>{
+      const saved = await saveItem('news', f);
+      const savedItem = f.id ? f : {...f, id: saved?.id};
+      setData(d=>({
+        ...d,
+        news: f.id
+          ? d.news.map(n=>n.id===f.id ? savedItem : n)
+          : [savedItem, ...d.news]
+      }));
+      showToast(f.id?'✓ Noticia actualizada':'✓ Noticia publicada');
+      setEditN(null);setShowFormN(false);
+    });
   };
 
   const delNews=async id=>{
     if(!confirm('¿Eliminar esta noticia?'))return;
-    await persist({...data,news:news.filter(n=>n.id!==id)});
-    showToast('Noticia eliminada');
+    await withSaving(async()=>{
+      await saveItem('news', {id}, 'delete');
+      setData(d=>({...d, news: d.news.filter(n=>n.id!==id)}));
+      showToast('Noticia eliminada');
+    });
   };
 
   const closeForm=()=>{setEditP(null);setEditN(null);setShowFormP(false);setShowFormN(false);setEditC(null);setShowFormC(false)};
 
   const saveCategory=async f=>{
-    if(!f.name){showToast('⚠ El nombre es requerido');return}
-    let newCategories;
-    if(f.id){newCategories=categoriesData.map(c=>c.id===f.id?f:c);showToast('✓ Categoría actualizada');}
-    else{newCategories=[...categoriesData,{...f,id:Date.now()}];showToast('✓ Categoría agregada');}
-    await persist({...data,categories:newCategories});
-    setEditC(null);setShowFormC(false);
+    if(!f.name){showToast('⚠ El nombre es requerido');return;}
+    await withSaving(async()=>{
+      const saved = await saveItem('categories', f);
+      const savedItem = f.id ? f : {...f, id: saved?.id};
+      setCategoriesData(prev=>
+        f.id ? prev.map(c=>c.id===f.id ? savedItem : c) : [...prev, savedItem]
+      );
+      setData(d=>({
+        ...d,
+        categories: f.id
+          ? d.categories.map(c=>c.id===f.id ? savedItem : c)
+          : [...d.categories, savedItem]
+      }));
+      showToast(f.id?'✓ Categoría actualizada':'✓ Categoría agregada');
+      setEditC(null);setShowFormC(false);
+    });
   };
 
   const delCategory=async id=>{
     if(!confirm('¿Eliminar esta categoría?'))return;
-    await persist({...data,categories:categoriesData.filter(c=>c.id!==id)});
-    showToast('Categoría eliminada');
+    await withSaving(async()=>{
+      await saveItem('categories', {id}, 'delete');
+      setCategoriesData(prev=>prev.filter(c=>c.id!==id));
+      setData(d=>({...d, categories: d.categories.filter(c=>c.id!==id)}));
+      showToast('Categoría eliminada');
+    });
   };
 
   return h('div',null,
@@ -692,10 +719,7 @@ function Admin({data,setData,setPage}){
                     h('option',{value:'sparkles'},'✨ Artesanal'),
                     h('option',{value:'cake'},'🍰 Pastelería'),
                     h('option',{value:'document'},'📄 Calidad'),
-                    h('option',{value:'gift'},'🏠 Domicilio'),
-                    h('option',{value:'sparkles'},'💎 Premium'),
-                    h('option',{value:'cake'},'🎂 Cumpleaños'),
-                    h('option',{value:'truck'},'🚀 Rápido')
+                    h('option',{value:'tag'},'🏷️ Etiqueta')
                   )
                 ),
                 h('div',{style:{display:'flex',flexDirection:'column',gap:'4px',flex:1}},
@@ -762,23 +786,11 @@ function App(){
   useEffect(()=>{
     loadData()
       .then(d=>setData({
-        whatsappNumber:'18291234567',
-        products:[],
-        news:[],
-        categories:(d?.categories||['Galletas','Donas','Cajas','Frituras','Cupcakes','Especiales']).map((c,i)=>
-          typeof c === 'string' ? {id: Date.now() + i, name: c} : c
-        ),
-        hero:{
-          tag:' Dulcería artesanal ✦ Hecho con amor',
-          title:'Donde cada dulce es una obra de arte',
-          titleColor:'#3D2B1F',
-          subtitle:'Creamos experiencias dulces únicas, elaboradas a mano con los mejores ingredientes.',
-          floats:[
-            {icon:'truck', text:'Entrega a domicilio', color:'#F5DCE1'},
-            {icon:'gift', text:'Pedidos personalizados', color:'#F0E0C0'},
-            {icon:'sparkles', text:'100% artesanal', color:'#DCF5E8'}
-          ]
-        },
+        whatsappNumber: DEFAULT_WHATSAPP,
+        products: [],
+        news: [],
+        categories: [],
+        hero: DEFAULT_HERO,
         ...d
       }))
       .catch(()=>setError('No se pudo conectar con la base de datos.'));
@@ -792,7 +804,7 @@ function App(){
 
   if(page==='login') return h(Login,{setPage});
   if(page==='admin') return h(Admin,{data,setData,setPage});
-  return h(PublicSite,{products:data.products||[],news:data.news||[],whatsappNumber:data.whatsappNumber||'18291234567',hero:data.hero,setPage,categories:(data.categories||['Galletas','Donas','Cajas','Frituras','Cupcakes','Especiales']).map((c,i)=>typeof c === 'string' ? {id: Date.now() + i, name: c} : c)});
+  return h(PublicSite,{products:data.products||[],news:data.news||[],whatsappNumber:data.whatsappNumber||DEFAULT_WHATSAPP,hero:data.hero||DEFAULT_HERO,setPage,categories:data.categories||[]});
 }
 
 ReactDOM.createRoot(document.getElementById('app')).render(h(App));
