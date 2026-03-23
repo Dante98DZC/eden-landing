@@ -675,7 +675,6 @@ function Admin({data,setData,setPage}){
               h('label',{className:'form-label',style:{marginBottom:'0'}},'Elementos destacados ('+heroData.floats.length+')'),
               h('div',{style:{display:'flex',gap:'6px'}},
                 h('button',{className:'btn-save',disabled:heroData.floats.length>=6,onClick:addHeroFloat,style:{padding:'6px 12px',fontSize:'12px'}},'+ Añadir'),
-                h('button',{className:'btn-cancel',disabled:heroData.floats.length<=1,onClick:()=>removeHeroFloat(heroData.floats.length-1),style:{padding:'6px 12px',fontSize:'12px'}},'- Quitar')
               )
             ),
             heroData.floats.map((f,i)=>h('div',{key:i,style:{border:'1px solid var(--border)',borderRadius:'6px',padding:'12px',marginBottom:'12px',background:'var(--cream)'}},
