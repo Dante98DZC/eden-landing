@@ -16,22 +16,161 @@ const {useState,useEffect}=React;
 const h=React.createElement;
 
 // ── CONFIG ────────────────────────────────────────────────────
-const BIN_ID  = "69be0ee4b7ec241ddc8a64fc";
-const API_KEY = "$2a$10$0HKBnvyt.BnoxpApmO5aJO4ZjK1QlXRaZcglh7WCi/XesRwppyhUO";
-const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+const SUPABASE_URL = "https://ocvtaecffnifyfqekbdf.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jdnRhZWNmZm5pZnlmcWVrYmRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyODEwNjEsImV4cCI6MjA4OTg1NzA2MX0.Y1RUGeHgDnLWAvMh2ahwwI_gXQdyPfTBeG868-cbaXs";
+const SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jdnRhZWNmZm5pZnlmcWVrYmRmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDI4MTA2MSwiZXhwIjoyMDg5ODU3MDYxfQ.VM1lILnU_D3XRDSjDHZzxItCu7_sW0S1ZlknPgykXS0";
+
+// Helper para hacer requests a Supabase REST API
+async function supabaseRequest(method, path, body = null, useServiceKey = false) {
+  const url = `${SUPABASE_URL}/rest/v1/${path}`;
+  const token = useServiceKey ? SUPABASE_SERVICE_KEY : SUPABASE_ANON_KEY;
+  
+  const headers = {
+    "Content-Type": "application/json",
+    "apikey": SUPABASE_ANON_KEY,
+    "Authorization": `Bearer ${token}`,
+    "Prefer": "return=representation"
+  };
+
+  const config = {
+    method,
+    headers
+  };
+  
+  if (body) {
+    config.body = JSON.stringify(body);
+  }
+
+  console.log(`[Supabase ${method}] ${path}${body ? ' with body: '+JSON.stringify(body).slice(0,100):''}...`);
+  
+  const res = await fetch(url, config);
+  const text = await res.text();
+  
+  if (!res.ok) {
+    console.error(`[Supabase Error ${res.status}]`, text);
+    throw new Error(`Supabase (${res.status}): ${text}`);
+  }
+  
+  try {
+    return text ? JSON.parse(text) : null;
+  } catch {
+    return text;
+  }
+}
 
 async function loadData(){
-  const res = await fetch(BIN_URL+"/latest", {headers:{"X-Access-Key":API_KEY}});
-  const json = await res.json();
-  return json.record;
+  try {
+    // Cargar todas las tablas en paralelo
+    const [products, news, config, categories] = await Promise.all([
+      supabaseRequest("GET", "products?order=position.asc,id.asc"),
+      supabaseRequest("GET", "news?order=date.desc"),
+      supabaseRequest("GET", "site_config"),
+      supabaseRequest("GET", "categories?order=name.asc")
+    ]);
+
+    // Extraer hero y whatsapp de site_config
+    let whatsappNumber = "18291234567";
+    let hero = {
+      tag: " Dulcería artesanal ✦ Hecho con amor",
+      title: "Donde cada dulce es una obra de arte",
+      titleColor: "#3D2B1F",
+      subtitle: "Creamos experiencias dulces únicas, elaboradas a mano con los mejores ingredientes.",
+      floats: [
+        {icon:"truck",text:"Entrega a domicilio",color:"#F5DCE1"},
+        {icon:"gift",text:"Pedidos personalizados",color:"#F0E0C0"},
+        {icon:"sparkles",text:"100% artesanal",color:"#DCF5E8"}
+      ]
+    };
+
+    if (config && Array.isArray(config) && config.length > 0) {
+      config.forEach(item => {
+        if (item.key === "whatsapp_number") whatsappNumber = item.value;
+        if (item.key === "hero" && item.value) hero = item.value;
+      });
+    }
+
+    console.log("[Data Loaded]", {products: products?.length||0, news: news?.length||0, categories: categories?.length||0});
+    
+    return {
+      products: products || [],
+      news: news || [],
+      whatsappNumber: whatsappNumber,
+      categories: categories || [],
+      hero: hero
+    };
+  } catch (error) {
+    console.error("Error cargando datos:", error);
+    throw error;
+  }
 }
 
 async function saveData(data){
-  await fetch(BIN_URL, {
-    method:"PUT",
-    headers: HEADERS,
-    body: JSON.stringify(data)
-  });
+  try {
+    // Usar service key para escrituras
+    
+    // Guardar/actualizar products
+    if (data.products && Array.isArray(data.products)) {
+      for (const product of data.products) {
+        const {id, ...rest} = product;
+        if (id) {
+          // UPDATE
+          await supabaseRequest("PATCH", `products?id=eq.${id}`, rest, true);
+        } else {
+          // INSERT (Supabase genera el ID)
+          const newProduct = await supabaseRequest("POST", "products", {...rest}, true);
+          product.id = newProduct[0]?.id;
+        }
+      }
+    }
+
+    // Guardar/actualizar news
+    if (data.news && Array.isArray(data.news)) {
+      for (const article of data.news) {
+        const {id, ...rest} = article;
+        if (id) {
+          await supabaseRequest("PATCH", `news?id=eq.${id}`, rest, true);
+        } else {
+          const newArticle = await supabaseRequest("POST", "news", {...rest}, true);
+          article.id = newArticle[0]?.id;
+        }
+      }
+    }
+
+    // Guardar configuración global (whatsapp_number y hero)
+    if (data.whatsappNumber) {
+      try {
+        await supabaseRequest("PATCH", `site_config?key=eq.whatsapp_number`, {value: data.whatsappNumber}, true);
+      } catch {
+        await supabaseRequest("POST", "site_config", {key: "whatsapp_number", value: data.whatsappNumber}, true);
+      }
+    }
+
+    if (data.hero) {
+      try {
+        await supabaseRequest("PATCH", `site_config?key=eq.hero`, {value: data.hero}, true);
+      } catch {
+        await supabaseRequest("POST", "site_config", {key: "hero", value: data.hero}, true);
+      }
+    }
+
+    // Guardar categories
+    if (data.categories && Array.isArray(data.categories)) {
+      for (const category of data.categories) {
+        const {id, ...rest} = category;
+        if (id) {
+          await supabaseRequest("PATCH", `categories?id=eq.${id}`, rest, true);
+        } else {
+          const newCat = await supabaseRequest("POST", "categories", {...rest}, true);
+          category.id = newCat[0]?.id;
+        }
+      }
+    }
+
+    console.log("[Data Saved Successfully]");
+  } catch (error) {
+    console.error("Error guardando datos:", error);
+    throw error;
+  }
 }
 
 // ── Icon helper ───────────────────────────────────────────────
@@ -135,7 +274,7 @@ function ProductModal({p,onClose,whatsappNumber}){
       h('div',{className:'modal-title'},p.name),
       h('div',{className:'modal-price'},'$'+p.price),
       p.soldOut&&h('div',{className:'product-outstock'},'Agotado'),
-      h('div',{className:'modal-desc'},p.desc),
+      h('div',{className:'modal-desc'},p.description||p.desc),
       h('div',{className:'modal-actions'},
         h('button',{className:'btn-primary',style:{flex:1},disabled:p.soldOut,onClick:()=>{ if(!p.soldOut) window.open(orderUrl,'_blank'); }},h(Icon,{name:'sparkles'}),(p.soldOut?' Agotado':' Pedir por WhatsApp')),
         h('button',{className:'btn-secondary',onClick:onClose},'Cerrar')
@@ -265,7 +404,7 @@ function ProductForm({item,onSave,onCancel,saving,categories}){
     ),
     h('div',{className:'form-group'},
       h('label',{className:'form-label'},'Descripción'),
-      h('textarea',{className:'form-textarea',value:f.desc,onChange:e=>set('desc',e.target.value),placeholder:'Describe el producto...'})
+      h('textarea',{className:'form-textarea',value:f.description||f.desc,onChange:e=>set('description',e.target.value),placeholder:'Describe el producto...'})
     ),
     h('div',{style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'1rem'}},
       h('input',{type:'checkbox',id:'featured',checked:f.featured,onChange:e=>set('featured',e.target.checked),style:{accentColor:'#C9667A'}}),
