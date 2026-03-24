@@ -182,6 +182,8 @@
             "https://unpkg.com/heroicons@2.0.13/24/outline/document-text.svg",
           cake: "https://unpkg.com/heroicons@2.0.13/24/outline/cake.svg",
           tag: "https://unpkg.com/heroicons@2.0.13/24/outline/tag.svg",
+          whatsapp:
+            "https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg",
         };
         return h("img", {
           src: M[name] || M.cake,
@@ -413,7 +415,7 @@
                     if (!p.soldOut) window.open(orderUrl, "_blank");
                   },
                 },
-                h(Icon, { name: "sparkles" }),
+                h(Icon, { name: "whatsapp" }),
                 p.soldOut ? " Agotado" : " Pedir por WhatsApp",
               ),
               h(
@@ -639,7 +641,7 @@
                   onClick: () =>
                     window.open(buildWhatsappUrl(whatsappNumber), "_blank"),
                 },
-                h(Icon, { name: "sparkles" }),
+                h(Icon, { name: "whatsapp" }),
                 " WhatsApp",
               ),
             ),
