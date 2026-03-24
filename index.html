@@ -14,7 +14,7 @@
     <div id="app"></div>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script async src="https://imgbb.com/upload.js"></script>
+
     <script>
       const { useState, useEffect } = React;
       const h = React.createElement;
@@ -71,6 +71,112 @@
         } catch {
           return text;
         }
+      }
+
+      // ── Supabase Storage upload ────────────────────────────────────
+      async function uploadToSupabaseBucket(file) {
+        const ext = file.name.split(".").pop() || "jpg";
+        const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const token = getAuthToken() || SUPABASE_ANON_KEY;
+
+        const res = await fetch(
+          `${SUPABASE_URL}/storage/v1/object/product-images/${fileName}`,
+          {
+            method: "POST",
+            headers: {
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${token}`,
+              "Content-Type": file.type || "application/octet-stream",
+              "x-upsert": "true",
+            },
+            body: file,
+          }
+        );
+
+        if (!res.ok) {
+          const err = await res.text();
+          throw new Error(`Storage error (${res.status}): ${err}`);
+        }
+
+        return `${SUPABASE_URL}/storage/v1/object/public/product-images/${fileName}`;
+      }
+
+      // ── ImageUploader component ────────────────────────────────────
+      function ImageUploader({ value, onChange }) {
+        const [uploading, setUploading] = useState(false);
+        const [error, setError] = useState("");
+        const fileRef = React.useRef(null);
+
+        const handleFile = async (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+          setUploading(true);
+          setError("");
+          try {
+            const url = await uploadToSupabaseBucket(file);
+            onChange(url);
+          } catch (err) {
+            setError(err.message || "Error al subir imagen");
+          } finally {
+            setUploading(false);
+            // Reset input so same file can be re-selected
+            if (fileRef.current) fileRef.current.value = "";
+          }
+        };
+
+        return h(
+          "div",
+          { style: { display: "flex", flexDirection: "column", gap: "8px" } },
+          h(
+            "div",
+            { style: { display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" } },
+            h(
+              "label",
+              {
+                style: {
+                  display: "inline-block",
+                  background: uploading ? "#a0536a" : "#C9667A",
+                  color: "white",
+                  padding: "8px 14px",
+                  borderRadius: "6px",
+                  fontSize: "13px",
+                  cursor: uploading ? "not-allowed" : "pointer",
+                  whiteSpace: "nowrap",
+                  userSelect: "none",
+                },
+              },
+              uploading ? "Subiendo..." : "📷 Subir imagen",
+              h("input", {
+                ref: fileRef,
+                type: "file",
+                accept: "image/*",
+                style: { display: "none" },
+                disabled: uploading,
+                onChange: handleFile,
+              }),
+            ),
+            value &&
+              h("img", {
+                src: value,
+                alt: "preview",
+                style: {
+                  width: "48px",
+                  height: "48px",
+                  objectFit: "cover",
+                  borderRadius: "6px",
+                  border: "1px solid var(--border)",
+                },
+              }),
+          ),
+          error && h("div", { style: { color: "#C9667A", fontSize: "12px" } }, error),
+          h("input", {
+            className: "form-input",
+            value: value,
+            onChange: (e) => onChange(e.target.value),
+            placeholder: "O pega una URL de imagen...",
+            style: { marginTop: "0" },
+          }),
+        );
       }
 
       // ── Defaults centralizados ─────────────────────────────────────
@@ -827,59 +933,9 @@
             "div",
             { className: "form-group" },
             h("label", { className: "form-label" }, "Imagen del producto"),
-            h(
-              "div",
-              {
-                style: {
-                  display: "flex",
-                  gap: "8px",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                },
-              },
-              h(
-                "a",
-                {
-                  href: "https://imgbb.com/",
-                  target: "_blank",
-                  "data-imgbb-upload": true,
-                  "data-width": 800,
-                  "data-lang": "es",
-                  "data-onclick": "imgbb_upload_callback",
-                  className: "imgbb-btn",
-                  style: {
-                    display: "inline-block",
-                    background: "#C9667A",
-                    color: "white",
-                    padding: "8px 14px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    textDecoration: "none",
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                  },
-                },
-                "📷 Subir imagen",
-              ),
-              f.image_url &&
-                h("img", {
-                  src: f.image_url,
-                  alt: "preview",
-                  style: {
-                    width: "48px",
-                    height: "48px",
-                    objectFit: "cover",
-                    borderRadius: "6px",
-                    border: "1px solid var(--border)",
-                  },
-                }),
-            ),
-            h("input", {
-              className: "form-input",
+            h(ImageUploader, {
               value: f.image_url,
-              onChange: (e) => set("image_url", e.target.value),
-              placeholder: "https://i.ibb.co/...",
-              style: { marginTop: "8px" },
+              onChange: (url) => set("image_url", url),
             }),
           ),
           h(
@@ -1003,58 +1059,9 @@
               "div",
               { className: "form-group" },
               h("label", { className: "form-label" }, "Imagen de la noticia"),
-              h(
-                "div",
-                {
-                  style: {
-                    display: "flex",
-                    gap: "8px",
-                    alignItems: "center",
-                    flexWrap: "wrap",
-                  },
-                },
-                h(
-                  "a",
-                  {
-                    href: "https://imgbb.com/",
-                    target: "_blank",
-                    "data-imgbb-upload": true,
-                    "data-width": 800,
-                    "data-lang": "es",
-                    className: "imgbb-btn",
-                    style: {
-                      display: "inline-block",
-                      background: "#C9667A",
-                      color: "white",
-                      padding: "8px 14px",
-                      borderRadius: "6px",
-                      fontSize: "13px",
-                      textDecoration: "none",
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                    },
-                  },
-                  "📷 Subir imagen",
-                ),
-                f.image_url &&
-                  h("img", {
-                    src: f.image_url,
-                    alt: "preview",
-                    style: {
-                      width: "48px",
-                      height: "48px",
-                      objectFit: "cover",
-                      borderRadius: "6px",
-                      border: "1px solid var(--border)",
-                    },
-                  }),
-              ),
-              h("input", {
-                className: "form-input",
+              h(ImageUploader, {
                 value: f.image_url,
-                onChange: (e) => set("image_url", e.target.value),
-                placeholder: "https://i.ibb.co/...",
-                style: { marginTop: "8px" },
+                onChange: (url) => set("image_url", url),
               }),
             ),
           ),
@@ -2305,31 +2312,6 @@
           categories: data.categories || [],
         });
       }
-      // ── ImgBB upload callback ─────────────────────────────────────
-      window.imgbb_upload_callback = function (json) {
-        if (json && json.data && json.data.url) {
-          // Copia la URL al portapapeles
-          const url = json.data.display_url || json.data.url;
-          navigator.clipboard.writeText(url).catch(() => {});
-          // Rellena automáticamente el input visible más cercano
-          const inputs = document.querySelectorAll(
-            '.form-input[placeholder*="ibb.co"]',
-          );
-          const active = document.activeElement;
-          // Intenta encontrar el input del formulario activo
-          let target = null;
-          if (active && active.closest) {
-            target = active
-              .closest("div")
-              ?.querySelector('.form-input[placeholder*="ibb.co"]');
-          }
-          if (!target && inputs.length > 0) target = inputs[inputs.length - 1];
-          if (target) {
-            target.value = url;
-            target.dispatchEvent(new Event("input", { bubbles: true }));
-          }
-        }
-      };
       ReactDOM.createRoot(document.getElementById("app")).render(h(App));
     </script>
   </body>
