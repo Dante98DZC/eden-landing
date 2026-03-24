@@ -7,17 +7,23 @@ Sitio web responsive para la dulcería Sweet Eden, un negocio pequeño especiali
 - **Diseño moderno y minimalista** con paleta de colores cálidos
 - **Completamente responsive** enfocado en dispositivos móviles
 - **Catálogo de productos** con categorías, precios y descripciones
-- **Sistema de administración** con CRUD completo para productos y noticias
+- **Sistema de administración** con CRUD completo para productos, noticias y categorías
 - **Integración con WhatsApp** para pedidos directos
-- **Almacenamiento en Jsonbin** para persistencia de datos
+- **Base de datos en Supabase** para persistencia de datos en tiempo real
+- **Subida de imágenes a Supabase Storage** (bucket `product-image`)
+- **Autenticación con Supabase Auth**
 - **Sección de noticias** para anuncios e información
+- **Hero section editable** desde el panel de administración
 
 ## Estructura del proyecto
 
 ```
 eden-landing/
-├── index.html          # Archivo principal con la aplicación React
-├── base.css           # Estilos CSS modernos y responsive
+├── index.html    # Archivo principal con la aplicación React
+├── base.css      # Estilos CSS modernos y responsive
+└── README.md     # Este archivo
+```
+
 ## Cómo usar
 
 1. **Abrir el sitio**: Abre `index.html` en cualquier navegador moderno
@@ -25,45 +31,64 @@ eden-landing/
 3. **Hacer pedidos**: Los botones "Pedir" abren WhatsApp con el mensaje pre-llenado
 4. **Panel de administración**:
    - Haz clic en "Admin" en la navegación
-   - Usuario: `admin`
-   - Contraseña: `123`
-   - Gestiona productos y noticias desde el panel
+   - Inicia sesión con tu email y contraseña de Supabase Auth
+   - Gestiona productos, noticias y categorías desde el panel
 
 ## Funcionalidades del admin
 
 ### Productos
 - Agregar nuevos productos con nombre, precio, categoría, descripción e imagen
+- Subir imágenes directamente desde el dispositivo (se almacenan en Supabase Storage)
 - Editar productos existentes
 - Marcar productos como "favoritos"
+- Marcar productos como "agotados"
 - Eliminar productos
 
 ### Noticias
-- Crear anuncios y noticias
+- Crear anuncios y noticias con imagen, título y texto
 - Editar contenido existente
 - Eliminar noticias antiguas
 
+### Categorías
+- Crear y eliminar categorías de productos
+
+### Configuración general
+- Editar el número de WhatsApp
+- Personalizar el Hero: texto, colores e íconos de flotantes
+
 ## Tecnologías utilizadas
 
-- **React** (versión 18) para la interfaz
+- **React 18** (via CDN) para la interfaz
 - **CSS moderno** con variables CSS y diseño responsive
-- **LocalStorage** para persistencia de datos
-- **WhatsApp API** para integración de pedidos
+- **Supabase** como backend:
+  - Base de datos PostgreSQL (tablas: `products`, `news`, `categories`, `site_config`)
+  - Supabase Auth para autenticación de administradores
+  - Supabase Storage para imágenes (bucket público `product-image`)
 
-## Personalización
+## Configuración de Supabase
 
-Para personalizar el sitio:
+El proyecto requiere las siguientes tablas en Supabase:
 
-1. **Cambiar colores**: Modifica las variables CSS en `base.css`
-2. **Actualizar productos**: Usa el panel de admin o edita `INITIAL_PRODUCTS` en `index.html`
-3. **Cambiar número de WhatsApp**: Busca y reemplaza `18291234567` con tu número real
-4. **Agregar imágenes**: Coloca las fotos en la carpeta `Res/` y actualiza las URLs
+- `products` — name, category, price, description, image_url, featured, soldOut, position
+- `news` — title, text, date, image_url
+- `categories` — name
+- `site_config` — key, value
+
+Y el bucket de Storage `product-images` (público) con una policy que permita subidas a usuarios autenticados:
+
+```sql
+CREATE POLICY "auth upload" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'product-image');
+```
 
 ## Despliegue
 
-El sitio es completamente estático y puede ser desplegado en:
+El sitio es completamente estático y puede desplegarse en:
+
 - GitHub Pages
 - Netlify
-- Vercel
+- Cloudflare Pages
 - Cualquier servidor web
 
-Solo sube los archivos `index.html`, `base.css` y la carpeta `Res/`.
+Solo sube los archivos `index.html` y `base.css`.
