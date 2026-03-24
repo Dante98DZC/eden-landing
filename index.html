@@ -1,813 +1,2334 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Sweet Eden</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="base.css" />
-</head>
-<body>
-<div id="app"></div>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script>
-const {useState,useEffect}=React;
-const h=React.createElement;
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Sweet Eden</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="base.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script async src="https://imgbb.com/upload.js"></script>
+    <script>
+      const { useState, useEffect } = React;
+      const h = React.createElement;
 
-// ── CONFIG ────────────────────────────────────────────────────
-const SUPABASE_URL = "https://ocvtaecffnifyfqekbdf.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jdnRhZWNmZm5pZnlmcWVrYmRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyODEwNjEsImV4cCI6MjA4OTg1NzA2MX0.Y1RUGeHgDnLWAvMh2ahwwI_gXQdyPfTBeG868-cbaXs";
-// NOTA: Asegúrate de tener Row Level Security (RLS) activado en Supabase
-// con policies que permitan writes solo a usuarios autenticados.
+      // ── CONFIG ────────────────────────────────────────────────────
+      const SUPABASE_URL = "https://ocvtaecffnifyfqekbdf.supabase.co";
+      const SUPABASE_ANON_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jdnRhZWNmZm5pZnlmcWVrYmRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyODEwNjEsImV4cCI6MjA4OTg1NzA2MX0.Y1RUGeHgDnLWAvMh2ahwwI_gXQdyPfTBeG868-cbaXs";
+      // NOTA: Necesario tener Row Level Security (RLS) activado en Supabase
+      // con policies que permitan writes solo a usuarios autenticados.
 
-// ── Auth token (Supabase Auth) ─────────────────────────────────
-let _authToken = null;
-function setAuthToken(token){ _authToken = token; }
-function getAuthToken(){ return _authToken; }
+      // ── Auth token (Supabase Auth) ─────────────────────────────────
+      let _authToken = null;
+      function setAuthToken(token) {
+        _authToken = token;
+      }
+      function getAuthToken() {
+        return _authToken;
+      }
 
-// ── WhatsApp helper ────────────────────────────────────────────
-const DEFAULT_WHATSAPP = '18291234567';
-function buildWhatsappUrl(number, text){
-  const phone = (number || DEFAULT_WHATSAPP).replace(/[^0-9]+/g,'');
-  return text
-    ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
-    : `https://wa.me/${phone}`;
-}
+      // ── WhatsApp helper ────────────────────────────────────────────
+      const DEFAULT_WHATSAPP = "1234567890";
+      function buildWhatsappUrl(number, text) {
+        const phone = (number || DEFAULT_WHATSAPP).replace(/[^0-9]+/g, "");
+        return text
+          ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
+          : `https://wa.me/${phone}`;
+      }
 
-// ── Helper para hacer requests a Supabase REST API ─────────────
-async function supabaseRequest(method, path, body = null) {
-  const url = `${SUPABASE_URL}/rest/v1/${path}`;
-  const token = getAuthToken() || SUPABASE_ANON_KEY;
+      // ── Helper para hacer requests a Supabase REST API ─────────────
+      async function supabaseRequest(method, path, body = null) {
+        const url = `${SUPABASE_URL}/rest/v1/${path}`;
+        const token = getAuthToken() || SUPABASE_ANON_KEY;
 
-  const headers = {
-    "Content-Type": "application/json",
-    "apikey": SUPABASE_ANON_KEY,
-    "Authorization": `Bearer ${token}`,
-    "Prefer": "return=representation"
-  };
+        const headers = {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${token}`,
+          Prefer: "return=representation",
+        };
 
-  const config = { method, headers };
-  if (body) config.body = JSON.stringify(body);
+        const config = { method, headers };
+        if (body) config.body = JSON.stringify(body);
 
-  const res = await fetch(url, config);
-  const text = await res.text();
+        const res = await fetch(url, config);
+        const text = await res.text();
 
-  if (!res.ok) {
-    throw new Error(`Supabase (${res.status}): ${text}`);
-  }
+        if (!res.ok) {
+          throw new Error(`Supabase (${res.status}): ${text}`);
+        }
 
-  try {
-    return text ? JSON.parse(text) : null;
-  } catch {
-    return text;
-  }
-}
+        try {
+          return text ? JSON.parse(text) : null;
+        } catch {
+          return text;
+        }
+      }
 
-// ── Defaults centralizados ─────────────────────────────────────
-const DEFAULT_HERO = {
-  tag: ' Dulcería artesanal ✦ Hecho con amor',
-  title: 'Donde cada dulce es una obra de arte',
-  titleColor: '#3D2B1F',
-  subtitle: 'Creamos experiencias dulces únicas, elaboradas a mano con los mejores ingredientes.',
-  floats: [
-    {icon:'truck', text:'Entrega a domicilio', color:'#F5DCE1'},
-    {icon:'gift', text:'Pedidos personalizados', color:'#F0E0C0'},
-    {icon:'sparkles', text:'100% artesanal', color:'#DCF5E8'}
-  ]
-};
+      // ── Defaults centralizados ─────────────────────────────────────
+      const DEFAULT_HERO = {
+        tag: " Dulcería artesanal ✦ Hecho con amor",
+        title: "Donde cada dulce es una obra de arte",
+        titleColor: "#3D2B1F",
+        subtitle:
+          "Creamos experiencias dulces únicas, elaboradas a mano con los mejores ingredientes.",
+        floats: [
+          { icon: "truck", text: "Entrega a domicilio", color: "#F5DCE1" },
+          { icon: "gift", text: "Pedidos personalizados", color: "#F0E0C0" },
+          { icon: "sparkles", text: "100% artesanal", color: "#DCF5E8" },
+        ],
+      };
 
-// Normaliza un producto: limpia campos que no existen en la DB
-function normalizeProduct(p){
-  const {desc, category_id, ...rest} = p;
-  return {...rest, description: p.description || desc || ''};
-}
+      // Normaliza un producto: limpia campos que no existen en la DB
+      function normalizeProduct(p) {
+        const { desc, category_id, ...rest } = p;
+        return { ...rest, description: p.description || desc || "" };
+      }
 
-// Prepara un producto para enviar a Supabase (solo campos válidos de la tabla)
-function sanitizeProduct(p){
-  return {
-    name: p.name,
-    category: p.category,
-    price: p.price,
-    description: p.description || '',
-    image_url: p.image_url || '',
-    featured: !!p.featured,
-    soldOut: !!p.soldOut,
-    ...(p.position !== undefined && {position: p.position})
-  };
-}
+      // Prepara un producto para enviar a Supabase (solo campos válidos de la tabla)
+      function sanitizeProduct(p) {
+        return {
+          name: p.name,
+          category: p.category,
+          price: p.price,
+          description: p.description || "",
+          image_url: p.image_url || "",
+          featured: !!p.featured,
+          soldOut: !!p.soldOut,
+          ...(p.position !== undefined && { position: p.position }),
+        };
+      }
 
-async function loadData(){
-  try {
-    const [products, news, config, categories] = await Promise.all([
-      supabaseRequest("GET", "products?order=position.asc,id.asc"),
-      supabaseRequest("GET", "news?order=date.desc"),
-      supabaseRequest("GET", "site_config"),
-      supabaseRequest("GET", "categories?order=name.asc")
-    ]);
+      async function loadData() {
+        try {
+          const [products, news, config, categories] = await Promise.all([
+            supabaseRequest("GET", "products?order=position.asc,id.asc"),
+            supabaseRequest("GET", "news?order=date.desc"),
+            supabaseRequest("GET", "site_config"),
+            supabaseRequest("GET", "categories?order=name.asc"),
+          ]);
 
-    let whatsappNumber = DEFAULT_WHATSAPP;
-    let hero = DEFAULT_HERO;
+          let whatsappNumber = DEFAULT_WHATSAPP;
+          let hero = DEFAULT_HERO;
 
-    if (Array.isArray(config)) {
-      config.forEach(item => {
-        if (item.key === "whatsapp_number") whatsappNumber = item.value;
-        if (item.key === "hero" && item.value) hero = item.value;
-      });
-    }
+          if (Array.isArray(config)) {
+            config.forEach((item) => {
+              if (item.key === "whatsapp_number") whatsappNumber = item.value;
+              if (item.key === "hero" && item.value) hero = item.value;
+            });
+          }
 
-    return {
-      products: (products || []).map(normalizeProduct),
-      news: news || [],
-      whatsappNumber,
-      categories: categories || [],
-      hero
-    };
-  } catch (error) {
-    throw error;
-  }
-}
+          return {
+            products: (products || []).map(normalizeProduct),
+            news: news || [],
+            whatsappNumber,
+            categories: categories || [],
+            hero,
+          };
+        } catch (error) {
+          throw error;
+        }
+      }
 
-// Guarda un solo ítem (product, news o category)
-// action: 'save' | 'delete'
-async function saveItem(table, item, action = 'save') {
-  if (action === 'delete') {
-    return supabaseRequest("DELETE", `${table}?id=eq.${item.id}`);
-  }
-  const {id, ...rest} = item;
-  // Para productos, filtrar solo los campos que existen en la tabla
-  const body = table === 'products' ? sanitizeProduct(rest) : rest;
-  if (id) {
-    return supabaseRequest("PATCH", `${table}?id=eq.${id}`, body);
-  } else {
-    const result = await supabaseRequest("POST", table, body);
-    return result?.[0] || result;
-  }
-}
+      // Guarda un solo ítem (product, news o category)
+      // action: 'save' | 'delete'
+      async function saveItem(table, item, action = "save") {
+        if (action === "delete") {
+          return supabaseRequest("DELETE", `${table}?id=eq.${item.id}`);
+        }
+        const { id, ...rest } = item;
+        // Para productos, filtrar solo los campos que existen en la tabla
+        const body = table === "products" ? sanitizeProduct(rest) : rest;
+        if (id) {
+          return supabaseRequest("PATCH", `${table}?id=eq.${id}`, body);
+        } else {
+          const result = await supabaseRequest("POST", table, body);
+          return result?.[0] || result;
+        }
+      }
 
-// Guarda un valor de configuración global (site_config)
-async function saveConfig(key, value) {
-  try {
-    await supabaseRequest("PATCH", `site_config?key=eq.${key}`, {value});
-  } catch {
-    await supabaseRequest("POST", "site_config", {key, value});
-  }
-}
+      // Guarda un valor de configuración global (site_config)
+      async function saveConfig(key, value) {
+        try {
+          await supabaseRequest("PATCH", `site_config?key=eq.${key}`, {
+            value,
+          });
+        } catch {
+          await supabaseRequest("POST", "site_config", { key, value });
+        }
+      }
 
-// Mantener saveData por compatibilidad (no se usa para saves individuales)
-async function saveData(data){ /* legacy - ver saveItem y saveConfig */ }
+      // Mantener saveData por compatibilidad (no se usa para saves individuales)
+      async function saveData(data) {
+        /* legacy - ver saveItem y saveConfig */
+      }
 
-// ── Icon helper ───────────────────────────────────────────────
-function Icon({name,style}){
-  const M={
-    truck:'https://unpkg.com/heroicons@2.0.13/24/outline/truck.svg',
-    sparkles:'https://unpkg.com/heroicons@2.0.13/24/outline/sparkles.svg',
-    gift:'https://unpkg.com/heroicons@2.0.13/24/outline/gift.svg',
-    document:'https://unpkg.com/heroicons@2.0.13/24/outline/document-text.svg',
-    cake:'https://unpkg.com/heroicons@2.0.13/24/outline/cake.svg',
-    tag:'https://unpkg.com/heroicons@2.0.13/24/outline/tag.svg'
-  };
-  return h('img',{src:M[name]||M.cake,alt:name,style:Object.assign({width:'18px',height:'18px',display:'inline-block'},style||{})});
-}
-
-// Available hero icons for the Hero section (id,label,url)
-const HERO_ICONS = [
-  {id:'truck',    label:'Entrega',    url:'https://unpkg.com/heroicons@2.0.13/24/outline/truck.svg'},
-  {id:'gift',     label:'Regalo',     url:'https://unpkg.com/heroicons@2.0.13/24/outline/gift.svg'},
-  {id:'sparkles', label:'Artesanal',  url:'https://unpkg.com/heroicons@2.0.13/24/outline/sparkles.svg'},
-  {id:'cake',     label:'Pastelería', url:'https://unpkg.com/heroicons@2.0.13/24/outline/cake.svg'},
-  {id:'document', label:'Calidad',    url:'https://unpkg.com/heroicons@2.0.13/24/outline/document-text.svg'},
-  {id:'tag',      label:'Etiqueta',   url:'https://unpkg.com/heroicons@2.0.13/24/outline/tag.svg'}
-];
-
-// ── Date helpers ──────────────────────────────────────────────
-function formatDate(d){
-  try{const dt=new Date(d);if(isNaN(dt))return d;return dt.toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})}catch{return d}
-}
-function toISODate(d){
-  try{const dt=new Date(d);if(isNaN(dt))return new Date().toISOString().slice(0,10);return dt.toISOString().slice(0,10)}catch{return new Date().toISOString().slice(0,10)}
-}
-
-// ── Toast ─────────────────────────────────────────────────────
-function Toast({msg,onDone}){
-  useEffect(()=>{const t=setTimeout(onDone,2400);return()=>clearTimeout(t)},[]);
-  return h('div',{className:'toast'},msg);
-}
-
-// ── Spinner ───────────────────────────────────────────────────
-function Spinner(){
-  return h('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'60vh',gap:'1rem',color:'var(--gray,#9A8F8A)'}},
-    h('div',{style:{width:'36px',height:'36px',border:'3px solid #F5DCE1',borderTopColor:'#C9667A',borderRadius:'50%',animation:'spin .7s linear infinite'}}),
-    h('span',{style:{fontSize:'13px'}},'Cargando...')
-  );
-}
-
-// ── ProductCard ───────────────────────────────────────────────
-function ProductCard({p,onClick,whatsappNumber}){
-  const orderUrl = buildWhatsappUrl(whatsappNumber, 'Hola! Me interesa pedir: '+p.name+' ('+p.price+')');
-  return h('div',{className:'product-card'+(p.soldOut?' sold-out':''),onClick:()=>onClick(p)},
-    p.image_url
-      ? h('img',{src:p.image_url,alt:p.name,className:'product-img',onError:e=>{e.target.style.display='none'}})
-      : h('div',{className:'product-img-placeholder'},h(Icon,{name:'cake',style:{width:'48px',height:'48px'}})),
-    h('div',{className:'product-info'},
-      p.featured&&h('span',{className:'product-badge'},'★ Favorito'),
-      h('span',{className:'product-cat-tag'},p.category),
-      h('div',{className:'product-name'},p.name),
-      p.soldOut&&h('div',{className:'product-outstock'},'Agotado'),
-      h('div',{className:'product-footer'},
-        h('span',{className:'product-price'},'$'+p.price),
-        h('button',{className:'product-order-btn',disabled:p.soldOut,onClick:e=>{
-          e.stopPropagation();
-          if(p.soldOut) return;
-          window.open(orderUrl,'_blank');
-        }},p.soldOut?'Agotado':'Pedir')
-      )
-    )
-  );
-}
-
-// ── NewsCard ──────────────────────────────────────────────────
-function NewsCard({n}){
-  return h('div',{className:'news-card'},
-    h('div',{className:'news-accent'}),
-    h('div',{className:'news-body'},
-      h('div',{className:'news-date'},formatDate(n.date)),
-      h('div',{className:'news-title'},n.title),
-      h('div',{className:'news-text'},n.text)
-    ),
-    n.image_url&&h('img',{src:n.image_url,alt:n.title,className:'news-img'})
-  );
-}
-
-// ── ProductModal ──────────────────────────────────────────────
-function ProductModal({p,onClose,whatsappNumber}){
-  if(!p)return null;
-  const orderUrl = buildWhatsappUrl(whatsappNumber, 'Hola! Me interesa pedir: '+p.name+' ('+p.price+')');
-  return h('div',{className:'modal-overlay',onClick:onClose},
-    h('div',{className:'modal',onClick:e=>e.stopPropagation()},
-      h('div',{className:'modal-handle'}),
-      h('button',{className:'modal-close',onClick:onClose},'✕'),
-      p.image_url
-        ? h('img',{src:p.image_url,alt:p.name,className:'modal-img'})
-        : h('div',{className:'modal-img'},h(Icon,{name:'cake',style:{width:'64px',height:'64px'}})),
-      h('span',{className:'product-cat-tag'},p.category),
-      h('div',{className:'modal-title'},p.name),
-      h('div',{className:'modal-price'},'$'+p.price),
-      p.soldOut&&h('div',{className:'product-outstock'},'Agotado'),
-      h('div',{className:'modal-desc'},p.description||''),
-      h('div',{className:'modal-actions'},
-        h('button',{className:'btn-primary',style:{flex:1},disabled:p.soldOut,onClick:()=>{ if(!p.soldOut) window.open(orderUrl,'_blank'); }},h(Icon,{name:'sparkles'}),(p.soldOut?' Agotado':' Pedir por WhatsApp')),
-        h('button',{className:'btn-secondary',onClick:onClose},'Cerrar')
-      )
-    )
-  );
-}
-
-// ── PUBLIC SITE ───────────────────────────────────────────────
-function PublicSite({products,news,whatsappNumber,hero,setPage,categories}){
-  const [cat,setCat]=useState('Todos');
-  const [modal,setModal]=useState(null);
-  const filtered=cat==='Todos'?products:products.filter(p=>p.category===cat);
-  const heroFloats = hero?.floats || [
-    {icon:'truck', text:'Entrega a domicilio', color:'#F5DCE1'},
-    {icon:'gift', text:'Pedidos personalizados', color:'#F0E0C0'},
-    {icon:'sparkles', text:'100% artesanal', color:'#DCF5E8'}
-  ];
-  const cats = ['Todos', ...categories.map(c=>c.name||c)];
-  return h('div',null,
-    h('nav',null,
-      h('div',{className:'nav-inner'},
-        h('div',{className:'nav-logo'},'Sweet',h('span',null,' Eden')),
-        h('div',{className:'nav-links'},
-          h('button',{className:'nav-btn',onClick:()=>document.getElementById('productos')?.scrollIntoView({behavior:'smooth'})},'Ofertas'),
-          h('button',{className:'nav-btn',onClick:()=>document.getElementById('noticias')?.scrollIntoView({behavior:'smooth'})},'Noticias'),
-          h('button',{className:'nav-btn',onClick:()=>setPage('login')},'Admin')
-        )
-      )
-    ),
-    h('section',{className:'hero'},
-      h('div',{className:'hero-tag'},hero?.tag || ' Dulcería artesanal ✦ Hecho con amor'),
-      h('h1',{style:{color: hero?.titleColor || 'var(--warm)'}},hero?.title || 'Donde cada dulce es una obra de arte'),
-      h('p',null,hero?.subtitle || 'Creamos experiencias dulces únicas, elaboradas a mano con los mejores ingredientes.'),
-      h('div',{className:'hero-floats'},
-        heroFloats.map(f=>h('div',{key:f.icon,className:'hero-float'},h('span',{className:'hero-float-icon',style:{background:f.color}},h(Icon,{name:f.icon})),f.text))
-      )
-    ),
-    h('div',{id:'productos',className:'section'},
-      h('div',{className:'section-header'},
-        h('div',{className:'section-title'},'Ofertas')
-      ),
-      h('div',{className:'cats'},
-        cats.map(c=>h('button',{key:c,className:'cat-btn'+(cat===c?' active':''),onClick:()=>setCat(c)},c))
-      ),
-      filtered.length===0
-        ? h('div',{className:'empty'},h('div',{className:'empty-icon'},h(Icon,{name:'cake',style:{width:'48px',height:'48px'}})),h('div',{className:'empty-text'},'Sin productos en esta categoría'))
-        : h('div',{className:'products-grid'},filtered.map(p=>h(ProductCard,{key:p.id,p,onClick:setModal,whatsappNumber:whatsappNumber})))
-    ),
-    h('div',{id:'noticias',className:'section'},
-      h('div',{className:'section-header'},
-        h('div',null,
-          h('div',{className:'section-title'},'Noticias')
-        )
-      ),
-      news.length===0
-        ? h('div',{className:'empty'},h('div',{className:'empty-icon'},h(Icon,{name:'document',style:{width:'48px',height:'48px'}})),h('div',{className:'empty-text'},'Sin noticias por ahora'))
-        : h('div',{className:'news-list'},news.map(n=>h(NewsCard,{key:n.id,n})))
-    ),
-    h('div',{className:'contact-strip'},
-      h('h2',null,'¿Lista para ordenar?'),
-      h('p',null,'Escríbenos directamente y te atenderemos con gusto.'),
-      h('div',{className:'contact-buttons'},
-        h('button',{className:'contact-btn',onClick:()=>window.open(buildWhatsappUrl(whatsappNumber),'_blank')},h(Icon,{name:'sparkles'}),' WhatsApp'),
-      )
-    ),
-    h('footer',null,h('strong',null,'Sweet Eden'),' · Dabar Market · © 2026'),
-    modal&&h(ProductModal,{p:modal,onClose:()=>setModal(null),whatsappNumber:whatsappNumber})
-  );
-}
-
-// ── LOGIN (Supabase Auth) ──────────────────────────────────────
-function Login({setPage}){
-  const [email,setEmail]=useState('');
-  const [pass,setPass]=useState('');
-  const [err,setErr]=useState('');
-  const [loading,setLoading]=useState(false);
-  const submit=async()=>{
-    if(!email.trim()||!pass.trim()){setErr('Ingresa email y contraseña');return;}
-    setLoading(true);setErr('');
-    try{
-      const res=await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY},
-        body:JSON.stringify({email,password:pass})
-      });
-      const data=await res.json();
-      if(!res.ok||!data.access_token){setErr(data.error_description||data.msg||'Credenciales incorrectas');return;}
-      setAuthToken(data.access_token);
-      setPage('admin');
-    }catch{
-      setErr('Error de conexión. Intenta de nuevo.');
-    }finally{setLoading(false);}
-  };
-  return h('div',{className:'login-wrap'},
-    h('div',{className:'login-card'},
-      h('div',{className:'login-logo'},'Sweet Eden'),
-      h('div',{className:'login-sub'},'Panel de administración'),
-      err&&h('div',{className:'login-error'},err),
-      h('div',{className:'form-group'},
-        h('label',{className:'form-label'},'Email'),
-        h('input',{className:'form-input',type:'email',value:email,onChange:e=>setEmail(e.target.value),placeholder:'admin@sweeteden.com'})
-      ),
-      h('div',{className:'form-group'},
-        h('label',{className:'form-label'},'Contraseña'),
-        h('input',{className:'form-input',type:'password',value:pass,onChange:e=>setPass(e.target.value),onKeyDown:e=>e.key==='Enter'&&submit(),placeholder:'••••••••'})
-      ),
-      h('button',{className:'btn-save',style:{width:'100%'},disabled:loading,onClick:submit},loading?'Entrando...':'Entrar'),
-      h('div',{style:{textAlign:'center',marginTop:'1rem'}},
-        h('button',{className:'btn-cancel',onClick:()=>setPage('home')},'← Volver al sitio')
-      )
-    )
-  );
-}
-
-// ── PRODUCT FORM ──────────────────────────────────────────────
-function ProductForm({item,onSave,onCancel,saving,categories}){
-  const blank={name:'',category:categories[0]?.name||'Galletas',price:'',description:'',featured:false,image_url:'',soldOut:false};
-  const [f,setF]=useState(item?normalizeProduct(item):blank);
-  const set=(k,v)=>setF(p=>({...p,[k]:v}));
-  return h('div',null,
-    h('div',{className:'form-row'},
-      h('div',{className:'form-group'},
-        h('label',{className:'form-label'},'Nombre'),
-        h('input',{className:'form-input',value:f.name,onChange:e=>set('name',e.target.value),placeholder:'Nombre del producto'})
-      ),
-      h('div',{className:'form-group'},
-        h('label',{className:'form-label'},'Precio'),
-        h('input',{className:'form-input',type:'number',value:f.price,onChange:e=>set('price',e.target.value),placeholder:'25'})
-      )
-    ),
-    h('div',{className:'form-group'},
-      h('label',{className:'form-label'},'Categoría'),
-      h('select',{className:'form-select',value:f.category,onChange:e=>set('category',e.target.value)},
-        categories.map(c=>h('option',{key:c.name||c,value:c.name||c},c.name||c))
-      )
-    ),
-    h('div',{className:'form-group'},
-      h('label',{className:'form-label'},'URL de imagen (opcional)'),
-      h('input',{className:'form-input',value:f.image_url,onChange:e=>set('image_url',e.target.value),placeholder:'https://i.ibb.co/...'})
-    ),
-    h('div',{className:'form-group'},
-      h('label',{className:'form-label'},'Descripción'),
-      h('textarea',{className:'form-textarea',value:f.description||'',onChange:e=>set('description',e.target.value),placeholder:'Describe el producto...'})
-    ),
-    h('div',{style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'1rem'}},
-      h('input',{type:'checkbox',id:'featured',checked:f.featured,onChange:e=>set('featured',e.target.checked),style:{accentColor:'#C9667A'}}),
-      h('label',{htmlFor:'featured',style:{fontSize:'13px',color:'#6B4C3B'}},'Marcar como favorito')
-    ),
-    h('div',{style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'1rem'}},
-      h('input',{type:'checkbox',id:'soldOut',checked:f.soldOut,onChange:e=>set('soldOut',e.target.checked),style:{accentColor:'#C9667A'}}),
-      h('label',{htmlFor:'soldOut',style:{fontSize:'13px',color:'#6B4C3B'}},'Producto agotado')
-    ),
-    h('div',{className:'form-actions'},
-      h('button',{className:'btn-save',disabled:saving,onClick:()=>onSave(f)},saving?'Guardando...':'Guardar'),
-      h('button',{className:'btn-cancel',disabled:saving,onClick:onCancel},'Cancelar')
-    )
-  );
-}
-
-// ── NEWS FORM ─────────────────────────────────────────────────
-function NewsForm({item,onSave,onCancel,saving}){
-  const blank={id:null,date:'',title:'',text:'',image_url:''};
-  const todayISO=new Date().toISOString().slice(0,10);
-  const [f,setF]=useState(()=>item?{...item,date:toISODate(item.date)}:{...blank,date:todayISO});
-  const set=(k,v)=>setF(p=>({...p,[k]:v}));
-  return h('div',null,
-    h('div',{className:'form-row'},
-      h('div',{className:'form-group'},
-        h('label',{className:'form-label'},'Fecha'),
-        h('input',{className:'form-input',type:'date',value:f.date,onChange:e=>set('date',e.target.value)})
-      ),
-      h('div',{className:'form-group'},
-        h('label',{className:'form-label'},'URL imagen (opcional)'),
-        h('input',{className:'form-input',value:f.image_url,onChange:e=>set('image_url',e.target.value),placeholder:'https://i.ibb.co/...'})
-      )
-    ),
-    h('div',{className:'form-group'},
-      h('label',{className:'form-label'},'Título'),
-      h('input',{className:'form-input',value:f.title,onChange:e=>set('title',e.target.value),placeholder:'Título de la noticia'})
-    ),
-    h('div',{className:'form-group'},
-      h('label',{className:'form-label'},'Contenido'),
-      h('textarea',{className:'form-textarea',value:f.text,onChange:e=>set('text',e.target.value),placeholder:'Texto de la noticia...'})
-    ),
-    h('div',{className:'form-actions'},
-      h('button',{className:'btn-save',disabled:saving,onClick:()=>onSave(f)},saving?'Guardando...':'Guardar'),
-      h('button',{className:'btn-cancel',disabled:saving,onClick:onCancel},'Cancelar')
-    )
-  );
-}
-
-// ── ADMIN PANEL ───────────────────────────────────────────────
-function Admin({data,setData,setPage}){
-  const {products,news,whatsappNumber='',categories=[],hero={}}=data;
-  const [whatsapp,setWhatsapp]=useState(whatsappNumber||'');
-  const [heroData,setHeroData]=useState(hero||DEFAULT_HERO);
-  const [categoriesData,setCategoriesData]=useState(categories||[]);
-  const [tab,setTab]=useState('products');
-  const [editP,setEditP]=useState(null);
-  const [editN,setEditN]=useState(null);
-  const [editC,setEditC]=useState(null);
-  const [showFormP,setShowFormP]=useState(false);
-  const [showFormN,setShowFormN]=useState(false);
-  const [showFormC,setShowFormC]=useState(false);
-  const [saving,setSaving]=useState(false);
-  const [toast,setToast]=useState('');
-  useEffect(()=>{setWhatsapp(whatsappNumber||'');setHeroData(hero||DEFAULT_HERO);setCategoriesData(categories||[]);},[whatsappNumber,hero,categories]);
-
-  const showToast=msg=>{setToast(msg);setTimeout(()=>setToast(''),2400)};
-
-  // Wrapper genérico: ejecuta fn async, maneja saving/error
-  const withSaving=async(fn)=>{
-    setSaving(true);
-    try{ await fn(); }
-    catch(e){ showToast('❌ Error al guardar: '+(e?.message||'Revisa tu conexión.')); }
-    finally{ setSaving(false); }
-  };
-
-  const saveWhatsapp=async()=>{
-    if(!whatsapp.trim()){showToast('⚠ Ingresa un número de WhatsApp');return;}
-    await withSaving(async()=>{
-      await saveConfig('whatsapp_number', whatsapp.trim());
-      setData(d=>({...d,whatsappNumber:whatsapp.trim()}));
-      showToast('✓ Número de WhatsApp guardado');
-    });
-  };
-
-  const saveHero=async()=>{
-    if(!heroData.tag.trim()){showToast('⚠ La etiqueta superior es requerida');return;}
-    if(!heroData.title.trim()){showToast('⚠ El título es requerido');return;}
-    if(!heroData.subtitle.trim()){showToast('⚠ El subtítulo es requerido');return;}
-    const validFloats=heroData.floats.filter(f=>f.icon&&f.text.trim());
-    if(validFloats.length===0){showToast('⚠ Al menos un elemento destacado debe tener icono y texto');return;}
-    await withSaving(async()=>{
-      await saveConfig('hero', heroData);
-      setData(d=>({...d,hero:heroData}));
-      showToast('✓ Sección Hero actualizada ('+validFloats.length+' elementos)');
-    });
-  };
-
-  const updateHeroFloat=(index,field,value)=>{
-    const newFloats=[...heroData.floats];
-    newFloats[index]={...newFloats[index],[field]:value};
-    setHeroData({...heroData,floats:newFloats});
-  };
-
-  const addHeroFloat=()=>{
-    if(heroData.floats.length >= 6) return; // máximo 6 elementos
-    const newFloats=[...heroData.floats,{icon:'sparkles',text:'',color:'#F5DCE1'}];
-    setHeroData({...heroData,floats:newFloats});
-  };
-
-  const removeHeroFloat=(index)=>{
-    if(heroData.floats.length <= 1) return; // mínimo 1 elemento
-    const newFloats=heroData.floats.filter((_,i)=>i!==index);
-    setHeroData({...heroData,floats:newFloats});
-  };
-
-  const saveProduct=async f=>{
-    if(!f.name||!f.price){showToast('⚠ Completa nombre y precio');return;}
-    await withSaving(async()=>{
-      const saved = await saveItem('products', f);
-      const savedItem = f.id ? f : {...f, id: saved?.id};
-      setData(d=>({
-        ...d,
-        products: f.id
-          ? d.products.map(p=>p.id===f.id ? savedItem : p)
-          : [...d.products, savedItem]
-      }));
-      showToast(f.id?'✓ Producto actualizado':'✓ Producto agregado');
-      setEditP(null);setShowFormP(false);
-    });
-  };
-
-  const delProduct=async id=>{
-    if(!confirm('¿Eliminar este producto?'))return;
-    await withSaving(async()=>{
-      await saveItem('products', {id}, 'delete');
-      setData(d=>({...d, products: d.products.filter(p=>p.id!==id)}));
-      showToast('Producto eliminado');
-    });
-  };
-
-  const saveNews=async f=>{
-    if(!f.title){showToast('⚠ El título es requerido');return;}
-    await withSaving(async()=>{
-      const saved = await saveItem('news', f);
-      const savedItem = f.id ? f : {...f, id: saved?.id};
-      setData(d=>({
-        ...d,
-        news: f.id
-          ? d.news.map(n=>n.id===f.id ? savedItem : n)
-          : [savedItem, ...d.news]
-      }));
-      showToast(f.id?'✓ Noticia actualizada':'✓ Noticia publicada');
-      setEditN(null);setShowFormN(false);
-    });
-  };
-
-  const delNews=async id=>{
-    if(!confirm('¿Eliminar esta noticia?'))return;
-    await withSaving(async()=>{
-      await saveItem('news', {id}, 'delete');
-      setData(d=>({...d, news: d.news.filter(n=>n.id!==id)}));
-      showToast('Noticia eliminada');
-    });
-  };
-
-  const closeForm=()=>{setEditP(null);setEditN(null);setShowFormP(false);setShowFormN(false);setEditC(null);setShowFormC(false)};
-
-  const saveCategory=async f=>{
-    if(!f.name){showToast('⚠ El nombre es requerido');return;}
-    await withSaving(async()=>{
-      const saved = await saveItem('categories', f);
-      const savedItem = f.id ? f : {...f, id: saved?.id};
-      setCategoriesData(prev=>
-        f.id ? prev.map(c=>c.id===f.id ? savedItem : c) : [...prev, savedItem]
-      );
-      setData(d=>({
-        ...d,
-        categories: f.id
-          ? d.categories.map(c=>c.id===f.id ? savedItem : c)
-          : [...d.categories, savedItem]
-      }));
-      showToast(f.id?'✓ Categoría actualizada':'✓ Categoría agregada');
-      setEditC(null);setShowFormC(false);
-    });
-  };
-
-  const delCategory=async id=>{
-    if(!confirm('¿Eliminar esta categoría?'))return;
-    await withSaving(async()=>{
-      await saveItem('categories', {id}, 'delete');
-      setCategoriesData(prev=>prev.filter(c=>c.id!==id));
-      setData(d=>({...d, categories: d.categories.filter(c=>c.id!==id)}));
-      showToast('Categoría eliminada');
-    });
-  };
-
-  return h('div',null,
-    h('style',null,`@keyframes spin{to{transform:rotate(360deg)}}`),
-    h('nav',null,
-      h('div',{className:'nav-inner'},
-        h('div',{className:'nav-logo'},'Sweet',h('span',null,' Eden')),
-        h('div',{className:'nav-links'},
-          h('button',{className:'nav-btn',onClick:()=>setPage('home')},'← Ver sitio')
-        )
-      )
-    ),
-    h('div',{className:'admin-wrap'},
-      h('div',{className:'admin-header'},
-        h('div',{className:'admin-title'},'Panel Admin'),
-        (tab==='products'||tab==='news')
-          ? h('button',{className:'btn-save',disabled:saving,onClick:()=>{closeForm();tab==='products'?setShowFormP(true):setShowFormN(true)}},'+'+(tab==='products'?' Producto':' Noticia'))
-          : null
-      ),
-      h('div',{className:'admin-tabs'},
-        h('button',{className:'admin-tab'+(tab==='products'?' active':''),onClick:()=>{setTab('products');closeForm()}},'Productos ('+products.length+')'),
-        h('button',{className:'admin-tab'+(tab==='news'?' active':''),onClick:()=>{setTab('news');closeForm()}},'Noticias ('+news.length+')'),
-        h('button',{className:'admin-tab'+(tab==='settings'?' active':''),onClick:()=>{setTab('settings');closeForm()}},'Configuración')
-      ),
-
-      tab==='products'&&h('div',null,
-        (showFormP||editP)&&h('div',{style:{background:'var(--white)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'1.25rem',marginBottom:'1.25rem'}},
-          h('div',{style:{fontSize:'14px',fontWeight:'500',color:'var(--warm)',marginBottom:'1rem'}},editP?'Editar producto':'Nuevo producto'),
-          h(ProductForm,{item:editP,onSave:saveProduct,onCancel:closeForm,saving,categories:categoriesData})
-        ),
-        h('div',{className:'admin-list'},
-          products.length===0&&h('div',{className:'empty'},h('div',{className:'empty-icon'},h(Icon,{name:'cake',style:{width:'48px',height:'48px'}})),h('div',{className:'empty-text'},'Sin productos aún')),
-          products.map(p=>h('div',{key:p.id,className:'admin-item'},
-            h('div',{className:'admin-item-emoji'},
-              p.image_url
-                ? h('img',{src:p.image_url,style:{width:'100%',height:'100%',objectFit:'cover',borderRadius:'6px'},onError:e=>{e.target.style.display='none'}})
-                : h(Icon,{name:'cake',style:{width:'24px',height:'24px'}})
-            ),
-            h('div',{className:'admin-item-info'},
-              h('div',{className:'admin-item-name'},p.name),
-              h('div',{className:'admin-item-sub'},p.category+(p.featured?' · ★ Favorito':'')+(p.soldOut?' · Agotado':''))
-            ),
-            h('div',{className:'admin-item-price'},'$'+p.price),
-            h('div',{className:'admin-actions'},
-              h('button',{className:'btn-edit',disabled:saving,onClick:()=>{setEditP(p);setShowFormP(true)}},'Editar'),
-              h('button',{className:'btn-del',disabled:saving,onClick:()=>delProduct(p.id)},'✕')
-            )
-          ))
-        )
-      ),
-
-      tab==='news'&&h('div',null,
-        (showFormN||editN)&&h('div',{style:{background:'var(--white)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'1.25rem',marginBottom:'1.25rem'}},
-          h('div',{style:{fontSize:'14px',fontWeight:'500',color:'var(--warm)',marginBottom:'1rem'}},editN?'Editar noticia':'Nueva noticia'),
-          h(NewsForm,{item:editN,onSave:saveNews,onCancel:closeForm,saving})
-        ),
-        h('div',{className:'admin-list'},
-          news.length===0&&h('div',{className:'empty'},h('div',{className:'empty-icon'},h(Icon,{name:'document',style:{width:'48px',height:'48px'}})),h('div',{className:'empty-text'},'Sin noticias aún')),
-          news.map(n=>h('div',{key:n.id,className:'admin-item'},
-            h('div',{className:'admin-item-emoji'},h(Icon,{name:'document',style:{width:'20px',height:'20px'}})),
-            h('div',{className:'admin-item-info'},
-              h('div',{className:'admin-item-name'},n.title),
-              h('div',{className:'admin-item-sub'},formatDate(n.date))
-            ),
-            h('div',{className:'admin-actions'},
-              h('button',{className:'btn-edit',disabled:saving,onClick:()=>{setEditN(n);setShowFormN(true)}},'Editar'),
-              h('button',{className:'btn-del',disabled:saving,onClick:()=>delNews(n.id)},'✕')
-            )
-          ))
-        )
-      ),
-
-      tab==='settings'&&h('div',null,
-        h('div',{style:{background:'var(--white)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'1.25rem',marginBottom:'1.25rem'}},
-          h('div',{style:{fontSize:'14px',fontWeight:'500',color:'var(--warm)',marginBottom:'1rem'}},'Configuración de Contacto'),
-          h('div',{className:'form-group'},
-            h('label',{className:'form-label'},'Número de WhatsApp'),
-            h('input',{className:'form-input',value:whatsapp,onChange:e=>setWhatsapp(e.target.value),placeholder:'Ej. 18291234567 (sin espacios ni símbolos)'})
+      // ── Icon helper ───────────────────────────────────────────────
+      function Icon({ name, style }) {
+        const M = {
+          truck: "https://unpkg.com/heroicons@2.0.13/24/outline/truck.svg",
+          sparkles:
+            "https://unpkg.com/heroicons@2.0.13/24/outline/sparkles.svg",
+          gift: "https://unpkg.com/heroicons@2.0.13/24/outline/gift.svg",
+          document:
+            "https://unpkg.com/heroicons@2.0.13/24/outline/document-text.svg",
+          cake: "https://unpkg.com/heroicons@2.0.13/24/outline/cake.svg",
+          tag: "https://unpkg.com/heroicons@2.0.13/24/outline/tag.svg",
+        };
+        return h("img", {
+          src: M[name] || M.cake,
+          alt: name,
+          style: Object.assign(
+            { width: "18px", height: "18px", display: "inline-block" },
+            style || {},
           ),
-          h('div',{style:{fontSize:'12px',color:'var(--gray)',marginTop:'4px'}},'Este número se usará para los botones "Pedir por WhatsApp"'),
-          h('div',{className:'form-actions'},
-            h('button',{className:'btn-save',disabled:saving,onClick:saveWhatsapp},saving?'Guardando...':'Guardar número')
-          )
-        ),
-        h('div',{style:{background:'var(--white)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'1.25rem',marginBottom:'1.25rem'}},
-          h('div',{style:{fontSize:'14px',fontWeight:'500',color:'var(--warm)',marginBottom:'1rem'}},'Sección Hero'),
-          h('div',{className:'form-group'},
-            h('label',{className:'form-label'},'Etiqueta superior ',h('span',{style:{color:'var(--rose)'}},'*')),
-            h('input',{className:'form-input',value:heroData.tag,onChange:e=>setHeroData({...heroData,tag:e.target.value}),placeholder:'Ej. Dulcería artesanal ✦ Hecho con amor'})
-          ),
-          h('div',{className:'form-group'},
-            h('label',{className:'form-label'},'Título principal ',h('span',{style:{color:'var(--rose)'}},'*')),
-            h('div',{style:{display:'flex',gap:'8px',alignItems:'flex-end'}},
-              h('input',{className:'form-input',value:heroData.title,onChange:e=>setHeroData({...heroData,title:e.target.value}),placeholder:'Ej. Donde cada dulce es una obra de arte',style:{flex:1}}),
-              h('div',{style:{display:'flex',flexDirection:'column',gap:'4px'}},
-                h('label',{style:{fontSize:'11px',color:'var(--gray)'}},'Color'),
-                h('input',{className:'form-input',type:'color',value:heroData.titleColor||'#3D2B1F',onChange:e=>setHeroData({...heroData,titleColor:e.target.value}),style:{width:'50px',height:'36px',padding:'2px',cursor:'pointer'}})
-              )
-            )
-          ),
-          h('div',{className:'form-group'},
-            h('label',{className:'form-label'},'Subtítulo descriptivo ',h('span',{style:{color:'var(--rose)'}},'*')),
-            h('textarea',{className:'form-textarea',value:heroData.subtitle,onChange:e=>setHeroData({...heroData,subtitle:e.target.value}),placeholder:'Describe tu negocio y lo que ofreces...',rows:3})
-          ),
-          h('div',{style:{marginTop:'1.5rem',marginBottom:'1rem'}},
-            h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.75rem'}},
-              h('label',{className:'form-label',style:{marginBottom:'0'}},'Elementos destacados ('+heroData.floats.length+')'),
-              h('div',{style:{display:'flex',gap:'6px'}},
-                h('button',{className:'btn-save',disabled:heroData.floats.length>=6,onClick:addHeroFloat,style:{padding:'6px 12px',fontSize:'12px'}},'+ Añadir'),
-              )
-            ),
-            heroData.floats.map((f,i)=>h('div',{key:i,style:{border:'1px solid var(--border)',borderRadius:'6px',padding:'12px',marginBottom:'12px',background:'var(--cream)'}},
-              h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'8px'}},
-                h('div',{style:{fontSize:'12px',fontWeight:'500',color:'var(--warm-mid)'}},'Elemento '+(i+1)),
-                h('button',{className:'btn-del',onClick:()=>removeHeroFloat(i),style:{padding:'4px 8px',fontSize:'11px'},title:'Eliminar este elemento'},'×')
+        });
+      }
+
+      // Available hero icons for the Hero section (id,label,url)
+      const HERO_ICONS = [
+        {
+          id: "truck",
+          label: "Entrega",
+          url: "https://unpkg.com/heroicons@2.0.13/24/outline/truck.svg",
+        },
+        {
+          id: "gift",
+          label: "Regalo",
+          url: "https://unpkg.com/heroicons@2.0.13/24/outline/gift.svg",
+        },
+        {
+          id: "sparkles",
+          label: "Artesanal",
+          url: "https://unpkg.com/heroicons@2.0.13/24/outline/sparkles.svg",
+        },
+        {
+          id: "cake",
+          label: "Pastelería",
+          url: "https://unpkg.com/heroicons@2.0.13/24/outline/cake.svg",
+        },
+        {
+          id: "document",
+          label: "Calidad",
+          url: "https://unpkg.com/heroicons@2.0.13/24/outline/document-text.svg",
+        },
+        {
+          id: "tag",
+          label: "Etiqueta",
+          url: "https://unpkg.com/heroicons@2.0.13/24/outline/tag.svg",
+        },
+      ];
+
+      // ── Date helpers ──────────────────────────────────────────────
+      function formatDate(d) {
+        try {
+          const dt = new Date(d);
+          if (isNaN(dt)) return d;
+          return dt.toLocaleDateString("es-ES", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          });
+        } catch {
+          return d;
+        }
+      }
+      function toISODate(d) {
+        try {
+          const dt = new Date(d);
+          if (isNaN(dt)) return new Date().toISOString().slice(0, 10);
+          return dt.toISOString().slice(0, 10);
+        } catch {
+          return new Date().toISOString().slice(0, 10);
+        }
+      }
+
+      // ── Toast ─────────────────────────────────────────────────────
+      function Toast({ msg, onDone }) {
+        useEffect(() => {
+          const t = setTimeout(onDone, 2400);
+          return () => clearTimeout(t);
+        }, []);
+        return h("div", { className: "toast" }, msg);
+      }
+
+      // ── Spinner ───────────────────────────────────────────────────
+      function Spinner() {
+        return h(
+          "div",
+          {
+            style: {
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: "60vh",
+              gap: "1rem",
+              color: "var(--gray,#9A8F8A)",
+            },
+          },
+          h("div", {
+            style: {
+              width: "36px",
+              height: "36px",
+              border: "3px solid #F5DCE1",
+              borderTopColor: "#C9667A",
+              borderRadius: "50%",
+              animation: "spin .7s linear infinite",
+            },
+          }),
+          h("span", { style: { fontSize: "13px" } }, "Cargando..."),
+        );
+      }
+
+      // ── ProductCard ───────────────────────────────────────────────
+      function ProductCard({ p, onClick, whatsappNumber }) {
+        const orderUrl = buildWhatsappUrl(
+          whatsappNumber,
+          "Hola! Me interesa pedir: " + p.name + " (" + p.price + ")",
+        );
+        return h(
+          "div",
+          {
+            className: "product-card" + (p.soldOut ? " sold-out" : ""),
+            onClick: () => onClick(p),
+          },
+          p.image_url
+            ? h("img", {
+                src: p.image_url,
+                alt: p.name,
+                className: "product-img",
+                onError: (e) => {
+                  e.target.style.display = "none";
+                },
+              })
+            : h(
+                "div",
+                { className: "product-img-placeholder" },
+                h(Icon, {
+                  name: "cake",
+                  style: { width: "48px", height: "48px" },
+                }),
               ),
-              h('div',{style:{display:'flex',gap:'8px',alignItems:'center'}},
-                h('div',{style:{display:'flex',flexDirection:'column',gap:'4px'}},
-                  h('label',{style:{fontSize:'11px',color:'var(--gray)'}},'Icono'),
-                  h('select',{className:'form-select',value:f.icon,onChange:e=>updateHeroFloat(i,'icon',e.target.value),style:{width:'110px',fontSize:'12px'}},
-                    h('option',{value:''},'Seleccionar'),
-                    h('option',{value:'truck'},'🚚 Entrega'),
-                    h('option',{value:'gift'},'🎁 Regalo'),
-                    h('option',{value:'sparkles'},'✨ Artesanal'),
-                    h('option',{value:'cake'},'🍰 Pastelería'),
-                    h('option',{value:'document'},'📄 Calidad'),
-                    h('option',{value:'tag'},'🏷️ Etiqueta')
-                  )
+          h(
+            "div",
+            { className: "product-info" },
+            p.featured &&
+              h("span", { className: "product-badge" }, "★ Favorito"),
+            h("span", { className: "product-cat-tag" }, p.category),
+            h("div", { className: "product-name" }, p.name),
+            p.soldOut && h("div", { className: "product-outstock" }, "Agotado"),
+            h(
+              "div",
+              { className: "product-footer" },
+              h("span", { className: "product-price" }, "$" + p.price),
+              h(
+                "button",
+                {
+                  className: "product-order-btn",
+                  disabled: p.soldOut,
+                  onClick: (e) => {
+                    e.stopPropagation();
+                    if (p.soldOut) return;
+                    window.open(orderUrl, "_blank");
+                  },
+                },
+                p.soldOut ? "Agotado" : "Pedir",
+              ),
+            ),
+          ),
+        );
+      }
+
+      // ── NewsCard ──────────────────────────────────────────────────
+      function NewsCard({ n }) {
+        return h(
+          "div",
+          { className: "news-card" },
+          h("div", { className: "news-accent" }),
+          h(
+            "div",
+            { className: "news-body" },
+            h("div", { className: "news-date" }, formatDate(n.date)),
+            h("div", { className: "news-title" }, n.title),
+            h("div", { className: "news-text" }, n.text),
+          ),
+          n.image_url &&
+            h("img", { src: n.image_url, alt: n.title, className: "news-img" }),
+        );
+      }
+
+      // ── ProductModal ──────────────────────────────────────────────
+      function ProductModal({ p, onClose, whatsappNumber }) {
+        if (!p) return null;
+        const orderUrl = buildWhatsappUrl(
+          whatsappNumber,
+          "Hola! Me interesa pedir: " + p.name + " (" + p.price + ")",
+        );
+        return h(
+          "div",
+          { className: "modal-overlay", onClick: onClose },
+          h(
+            "div",
+            { className: "modal", onClick: (e) => e.stopPropagation() },
+            h("div", { className: "modal-handle" }),
+            h("button", { className: "modal-close", onClick: onClose }, "✕"),
+            p.image_url
+              ? h("img", {
+                  src: p.image_url,
+                  alt: p.name,
+                  className: "modal-img",
+                })
+              : h(
+                  "div",
+                  { className: "modal-img" },
+                  h(Icon, {
+                    name: "cake",
+                    style: { width: "64px", height: "64px" },
+                  }),
                 ),
-                h('div',{style:{display:'flex',flexDirection:'column',gap:'4px',flex:1}},
-                  h('label',{style:{fontSize:'11px',color:'var(--gray)'}},'Texto'),
-                  h('input',{className:'form-input',value:f.text,onChange:e=>updateHeroFloat(i,'text',e.target.value),placeholder:['Entrega a domicilio','Pedidos personalizados','100% artesanal','Servicio express','Calidad premium','Atención personalizada'][i] || 'Texto descriptivo',style:{fontSize:'13px'}})
+            h("span", { className: "product-cat-tag" }, p.category),
+            h("div", { className: "modal-title" }, p.name),
+            h("div", { className: "modal-price" }, "$" + p.price),
+            p.soldOut && h("div", { className: "product-outstock" }, "Agotado"),
+            h("div", { className: "modal-desc" }, p.description || ""),
+            h(
+              "div",
+              { className: "modal-actions" },
+              h(
+                "button",
+                {
+                  className: "btn-primary",
+                  style: { flex: 1 },
+                  disabled: p.soldOut,
+                  onClick: () => {
+                    if (!p.soldOut) window.open(orderUrl, "_blank");
+                  },
+                },
+                h(Icon, { name: "sparkles" }),
+                p.soldOut ? " Agotado" : " Pedir por WhatsApp",
+              ),
+              h(
+                "button",
+                { className: "btn-secondary", onClick: onClose },
+                "Cerrar",
+              ),
+            ),
+          ),
+        );
+      }
+
+      // ── PUBLIC SITE ───────────────────────────────────────────────
+      function PublicSite({
+        products,
+        news,
+        whatsappNumber,
+        hero,
+        setPage,
+        categories,
+      }) {
+        const [cat, setCat] = useState("Todos");
+        const [modal, setModal] = useState(null);
+        const filtered =
+          cat === "Todos"
+            ? products
+            : products.filter((p) => p.category === cat);
+        const heroFloats = hero?.floats || [
+          { icon: "truck", text: "Entrega a domicilio", color: "#F5DCE1" },
+          { icon: "gift", text: "Pedidos personalizados", color: "#F0E0C0" },
+          { icon: "sparkles", text: "100% artesanal", color: "#DCF5E8" },
+        ];
+        const cats = ["Todos", ...categories.map((c) => c.name || c)];
+        return h(
+          "div",
+          null,
+          h(
+            "nav",
+            null,
+            h(
+              "div",
+              { className: "nav-inner" },
+              h(
+                "div",
+                { className: "nav-logo" },
+                "Sweet",
+                h("span", null, " Eden"),
+              ),
+              h(
+                "div",
+                { className: "nav-links" },
+                h(
+                  "button",
+                  {
+                    className: "nav-btn",
+                    onClick: () =>
+                      document
+                        .getElementById("productos")
+                        ?.scrollIntoView({ behavior: "smooth" }),
+                  },
+                  "Ofertas",
                 ),
-                h('div',{style:{display:'flex',flexDirection:'column',gap:'4px'}},
-                  h('label',{style:{fontSize:'11px',color:'var(--gray)'}},'Color'),
-                  h('input',{className:'form-input',type:'color',value:f.color,onChange:e=>updateHeroFloat(i,'color',e.target.value),style:{width:'50px',height:'36px',padding:'2px',cursor:'pointer'}})
+                h(
+                  "button",
+                  {
+                    className: "nav-btn",
+                    onClick: () =>
+                      document
+                        .getElementById("noticias")
+                        ?.scrollIntoView({ behavior: "smooth" }),
+                  },
+                  "Noticias",
+                ),
+                h(
+                  "button",
+                  { className: "nav-btn", onClick: () => setPage("login") },
+                  "Admin",
+                ),
+              ),
+            ),
+          ),
+          h(
+            "section",
+            { className: "hero" },
+            h(
+              "div",
+              { className: "hero-tag" },
+              hero?.tag || " Dulcería artesanal ✦ Hecho con amor",
+            ),
+            h(
+              "h1",
+              { style: { color: hero?.titleColor || "var(--warm)" } },
+              hero?.title || "Donde cada dulce es una obra de arte",
+            ),
+            h(
+              "p",
+              null,
+              hero?.subtitle ||
+                "Creamos experiencias dulces únicas, elaboradas a mano con los mejores ingredientes.",
+            ),
+            h(
+              "div",
+              { className: "hero-floats" },
+              heroFloats.map((f) =>
+                h(
+                  "div",
+                  { key: f.icon, className: "hero-float" },
+                  h(
+                    "span",
+                    {
+                      className: "hero-float-icon",
+                      style: { background: f.color },
+                    },
+                    h(Icon, { name: f.icon }),
+                  ),
+                  f.text,
+                ),
+              ),
+            ),
+          ),
+          h(
+            "div",
+            { id: "productos", className: "section" },
+            h(
+              "div",
+              { className: "section-header" },
+              h("div", { className: "section-title" }, "Ofertas"),
+            ),
+            h(
+              "div",
+              { className: "cats" },
+              cats.map((c) =>
+                h(
+                  "button",
+                  {
+                    key: c,
+                    className: "cat-btn" + (cat === c ? " active" : ""),
+                    onClick: () => setCat(c),
+                  },
+                  c,
+                ),
+              ),
+            ),
+            filtered.length === 0
+              ? h(
+                  "div",
+                  { className: "empty" },
+                  h(
+                    "div",
+                    { className: "empty-icon" },
+                    h(Icon, {
+                      name: "cake",
+                      style: { width: "48px", height: "48px" },
+                    }),
+                  ),
+                  h(
+                    "div",
+                    { className: "empty-text" },
+                    "Sin productos en esta categoría",
+                  ),
                 )
-              )
-            ))
+              : h(
+                  "div",
+                  { className: "products-grid" },
+                  filtered.map((p) =>
+                    h(ProductCard, {
+                      key: p.id,
+                      p,
+                      onClick: setModal,
+                      whatsappNumber: whatsappNumber,
+                    }),
+                  ),
+                ),
           ),
-          h('div',{className:'form-actions'},
-            h('button',{className:'btn-save',disabled:saving,onClick:saveHero},saving?'Guardando...':'Guardar cambios del Hero')
-          ),
-          h('div',{style:{fontSize:'12px',color:'var(--gray)',marginTop:'8px'}},'Los cambios se aplicarán inmediatamente al sitio público. Puedes añadir hasta 6 elementos destacados.')
-        ),
-        h('div',{style:{background:'var(--white)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'1.25rem',marginBottom:'1.25rem'}},
-          h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1rem'}},
-            h('div',{style:{fontSize:'14px',fontWeight:'500',color:'var(--warm)'}},'Categorías de Productos'),
-            h('button',{className:'btn-save',disabled:saving,onClick:()=>{closeForm();setShowFormC(true)}},saving?'...':'+ Añadir')
-          ),
-          (showFormC||editC)&&h('div',{style:{background:'var(--white)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'1.25rem',marginBottom:'1.25rem'}},
-            h('div',{style:{fontSize:'14px',fontWeight:'500',color:'var(--warm)',marginBottom:'1rem'}},editC?'Editar categoría':'Nueva categoría'),
-            h('div',{className:'form-group'},
-              h('label',{className:'form-label'},'Nombre de la categoría ',h('span',{style:{color:'var(--rose)'}},'*')),
-              h('input',{className:'form-input',value:(editC||{name:''}).name,onChange:e=>setEditC({...(editC||{name:''}),name:e.target.value}),placeholder:'Ej. Galletas, Donas, Cupcakes...'})
+          h(
+            "div",
+            { id: "noticias", className: "section" },
+            h(
+              "div",
+              { className: "section-header" },
+              h(
+                "div",
+                null,
+                h("div", { className: "section-title" }, "Noticias"),
+              ),
             ),
-            h('div',{className:'form-actions'},
-              h('button',{className:'btn-save',disabled:saving,onClick:()=>saveCategory(editC||{name:''})},saving?'Guardando...':'Guardar categoría'),
-              h('button',{className:'btn-cancel',onClick:closeForm},'Cancelar')
-            )
+            news.length === 0
+              ? h(
+                  "div",
+                  { className: "empty" },
+                  h(
+                    "div",
+                    { className: "empty-icon" },
+                    h(Icon, {
+                      name: "document",
+                      style: { width: "48px", height: "48px" },
+                    }),
+                  ),
+                  h(
+                    "div",
+                    { className: "empty-text" },
+                    "Sin noticias por ahora",
+                  ),
+                )
+              : h(
+                  "div",
+                  { className: "news-list" },
+                  news.map((n) => h(NewsCard, { key: n.id, n })),
+                ),
           ),
-          h('div',{className:'admin-list'},
-            categoriesData.length===0&&h('div',{className:'empty'},h('div',{className:'empty-icon'},h(Icon,{name:'tag',style:{width:'48px',height:'48px'}})),h('div',{className:'empty-text'},'Sin categorías aún')),
-            categoriesData.map(c=>h('div',{key:c.id,className:'admin-item'},
-              h('div',{className:'admin-item-emoji'},
-                h(Icon,{name:'tag',style:{width:'24px',height:'24px'}})
+          h(
+            "div",
+            { className: "contact-strip" },
+            h("h2", null, "¿Orden Lista?"),
+            h("p", null, "Escríbenos, sera un placer atenderte."),
+            h(
+              "div",
+              { className: "contact-buttons" },
+              h(
+                "button",
+                {
+                  className: "contact-btn",
+                  onClick: () =>
+                    window.open(buildWhatsappUrl(whatsappNumber), "_blank"),
+                },
+                h(Icon, { name: "sparkles" }),
+                " WhatsApp",
               ),
-              h('div',{className:'admin-item-info'},
-                h('div',{className:'admin-item-name'},c.name),
-                h('div',{className:'admin-item-sub'},'Categoría de productos')
+            ),
+          ),
+          h(
+            "footer",
+            null,
+            h("strong", null, "Sweet Eden"),
+            " · Dabar Market · © 2026",
+          ),
+          modal &&
+            h(ProductModal, {
+              p: modal,
+              onClose: () => setModal(null),
+              whatsappNumber: whatsappNumber,
+            }),
+        );
+      }
+
+      // ── LOGIN (Supabase Auth) ──────────────────────────────────────
+      function Login({ setPage }) {
+        const [email, setEmail] = useState("");
+        const [pass, setPass] = useState("");
+        const [err, setErr] = useState("");
+        const [loading, setLoading] = useState(false);
+        const submit = async () => {
+          if (!email.trim() || !pass.trim()) {
+            setErr("Ingresa email y contraseña");
+            return;
+          }
+          setLoading(true);
+          setErr("");
+          try {
+            const res = await fetch(
+              `${SUPABASE_URL}/auth/v1/token?grant_type=password`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  apikey: SUPABASE_ANON_KEY,
+                },
+                body: JSON.stringify({ email, password: pass }),
+              },
+            );
+            const data = await res.json();
+            if (!res.ok || !data.access_token) {
+              setErr(
+                data.error_description ||
+                  data.msg ||
+                  "Credenciales incorrectas",
+              );
+              return;
+            }
+            setAuthToken(data.access_token);
+            setPage("admin");
+          } catch {
+            setErr("Error de conexión. Intenta de nuevo.");
+          } finally {
+            setLoading(false);
+          }
+        };
+        return h(
+          "div",
+          { className: "login-wrap" },
+          h(
+            "div",
+            { className: "login-card" },
+            h("div", { className: "login-logo" }, "Sweet Eden"),
+            h("div", { className: "login-sub" }, "Panel de administración"),
+            err && h("div", { className: "login-error" }, err),
+            h(
+              "div",
+              { className: "form-group" },
+              h("label", { className: "form-label" }, "Email"),
+              h("input", {
+                className: "form-input",
+                type: "email",
+                value: email,
+                onChange: (e) => setEmail(e.target.value),
+                placeholder: "Email",
+              }),
+            ),
+            h(
+              "div",
+              { className: "form-group" },
+              h("label", { className: "form-label" }, "Contraseña"),
+              h("input", {
+                className: "form-input",
+                type: "password",
+                value: pass,
+                onChange: (e) => setPass(e.target.value),
+                onKeyDown: (e) => e.key === "Enter" && submit(),
+                placeholder: "Contraseña",
+              }),
+            ),
+            h(
+              "button",
+              {
+                className: "btn-save",
+                style: { width: "100%" },
+                disabled: loading,
+                onClick: submit,
+              },
+              loading ? "Entrando..." : "Entrar",
+            ),
+            h(
+              "div",
+              { style: { textAlign: "center", marginTop: "1rem" } },
+              h(
+                "button",
+                { className: "btn-cancel", onClick: () => setPage("home") },
+                "← Volver al sitio",
               ),
-              h('div',{className:'admin-actions'},
-                h('button',{className:'btn-edit',disabled:saving,onClick:()=>{setEditC(c);setShowFormC(true)}},'Editar'),
-                h('button',{className:'btn-del',disabled:saving,onClick:()=>delCategory(c.id)},'✕')
-              )
-            ))
-          )
-        )
-      )
-    ),
-    toast&&h(Toast,{msg:toast,onDone:()=>setToast('')})
-  );
-}
+            ),
+          ),
+        );
+      }
 
-// ── ROOT APP ──────────────────────────────────────────────────
-function App(){
-  const [page,setPage]=useState('home');
-  const [data,setData]=useState(null);   // null = cargando
-  const [error,setError]=useState('');
+      // ── PRODUCT FORM ──────────────────────────────────────────────
+      function ProductForm({ item, onSave, onCancel, saving, categories }) {
+        const blank = {
+          name: "",
+          category: categories[0]?.name || "Galletas",
+          price: "",
+          description: "",
+          featured: false,
+          image_url: "",
+          soldOut: false,
+        };
+        const [f, setF] = useState(item ? normalizeProduct(item) : blank);
+        const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
+        return h(
+          "div",
+          null,
+          h(
+            "div",
+            { className: "form-row" },
+            h(
+              "div",
+              { className: "form-group" },
+              h("label", { className: "form-label" }, "Nombre"),
+              h("input", {
+                className: "form-input",
+                value: f.name,
+                onChange: (e) => set("name", e.target.value),
+                placeholder: "Nombre del producto",
+              }),
+            ),
+            h(
+              "div",
+              { className: "form-group" },
+              h("label", { className: "form-label" }, "Precio"),
+              h("input", {
+                className: "form-input",
+                type: "number",
+                value: f.price,
+                onChange: (e) => set("price", e.target.value),
+                placeholder: "$$",
+              }),
+            ),
+          ),
+          h(
+            "div",
+            { className: "form-group" },
+            h("label", { className: "form-label" }, "Categoría"),
+            h(
+              "select",
+              {
+                className: "form-select",
+                value: f.category,
+                onChange: (e) => set("category", e.target.value),
+              },
+              categories.map((c) =>
+                h(
+                  "option",
+                  { key: c.name || c, value: c.name || c },
+                  c.name || c,
+                ),
+              ),
+            ),
+          ),
+          h(
+            "div",
+            { className: "form-group" },
+            h("label", { className: "form-label" }, "Imagen del producto"),
+            h(
+              "div",
+              {
+                style: {
+                  display: "flex",
+                  gap: "8px",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                },
+              },
+              h(
+                "a",
+                {
+                  href: "https://imgbb.com/",
+                  target: "_blank",
+                  "data-imgbb-upload": true,
+                  "data-width": 800,
+                  "data-lang": "es",
+                  "data-onclick": "imgbb_upload_callback",
+                  className: "imgbb-btn",
+                  style: {
+                    display: "inline-block",
+                    background: "#C9667A",
+                    color: "white",
+                    padding: "8px 14px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    textDecoration: "none",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  },
+                },
+                "📷 Subir imagen",
+              ),
+              f.image_url &&
+                h("img", {
+                  src: f.image_url,
+                  alt: "preview",
+                  style: {
+                    width: "48px",
+                    height: "48px",
+                    objectFit: "cover",
+                    borderRadius: "6px",
+                    border: "1px solid var(--border)",
+                  },
+                }),
+            ),
+            h("input", {
+              className: "form-input",
+              value: f.image_url,
+              onChange: (e) => set("image_url", e.target.value),
+              placeholder: "https://i.ibb.co/...",
+              style: { marginTop: "8px" },
+            }),
+          ),
+          h(
+            "div",
+            { className: "form-group" },
+            h("label", { className: "form-label" }, "Descripción"),
+            h("textarea", {
+              className: "form-textarea",
+              value: f.description || "",
+              onChange: (e) => set("description", e.target.value),
+              placeholder: "Describe el producto...",
+            }),
+          ),
+          h(
+            "div",
+            {
+              style: {
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "1rem",
+              },
+            },
+            h("input", {
+              type: "checkbox",
+              id: "featured",
+              checked: f.featured,
+              onChange: (e) => set("featured", e.target.checked),
+              style: { accentColor: "#C9667A" },
+            }),
+            h(
+              "label",
+              {
+                htmlFor: "featured",
+                style: { fontSize: "13px", color: "#6B4C3B" },
+              },
+              "Marcar como favorito",
+            ),
+          ),
+          h(
+            "div",
+            {
+              style: {
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "1rem",
+              },
+            },
+            h("input", {
+              type: "checkbox",
+              id: "soldOut",
+              checked: f.soldOut,
+              onChange: (e) => set("soldOut", e.target.checked),
+              style: { accentColor: "#C9667A" },
+            }),
+            h(
+              "label",
+              {
+                htmlFor: "soldOut",
+                style: { fontSize: "13px", color: "#6B4C3B" },
+              },
+              "Producto agotado",
+            ),
+          ),
+          h(
+            "div",
+            { className: "form-actions" },
+            h(
+              "button",
+              {
+                className: "btn-save",
+                disabled: saving,
+                onClick: () => onSave(f),
+              },
+              saving ? "Guardando..." : "Guardar",
+            ),
+            h(
+              "button",
+              { className: "btn-cancel", disabled: saving, onClick: onCancel },
+              "Cancelar",
+            ),
+          ),
+        );
+      }
 
-  useEffect(()=>{
-    loadData()
-      .then(d=>setData({
-        whatsappNumber: DEFAULT_WHATSAPP,
-        products: [],
-        news: [],
-        categories: [],
-        hero: DEFAULT_HERO,
-        ...d
-      }))
-      .catch(()=>setError('No se pudo conectar con la base de datos.'));
-  },[]);
+      // ── NEWS FORM ─────────────────────────────────────────────────
+      function NewsForm({ item, onSave, onCancel, saving }) {
+        const blank = {
+          id: null,
+          date: "",
+          title: "",
+          text: "",
+          image_url: "",
+        };
+        const todayISO = new Date().toISOString().slice(0, 10);
+        const [f, setF] = useState(() =>
+          item
+            ? { ...item, date: toISODate(item.date) }
+            : { ...blank, date: todayISO },
+        );
+        const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
+        return h(
+          "div",
+          null,
+          h(
+            "div",
+            { className: "form-row" },
+            h(
+              "div",
+              { className: "form-group" },
+              h("label", { className: "form-label" }, "Fecha"),
+              h("input", {
+                className: "form-input",
+                type: "date",
+                value: f.date,
+                onChange: (e) => set("date", e.target.value),
+              }),
+            ),
+            h(
+              "div",
+              { className: "form-group" },
+              h("label", { className: "form-label" }, "Imagen de la noticia"),
+              h(
+                "div",
+                {
+                  style: {
+                    display: "flex",
+                    gap: "8px",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                  },
+                },
+                h(
+                  "a",
+                  {
+                    href: "https://imgbb.com/",
+                    target: "_blank",
+                    "data-imgbb-upload": true,
+                    "data-width": 800,
+                    "data-lang": "es",
+                    className: "imgbb-btn",
+                    style: {
+                      display: "inline-block",
+                      background: "#C9667A",
+                      color: "white",
+                      padding: "8px 14px",
+                      borderRadius: "6px",
+                      fontSize: "13px",
+                      textDecoration: "none",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    },
+                  },
+                  "📷 Subir imagen",
+                ),
+                f.image_url &&
+                  h("img", {
+                    src: f.image_url,
+                    alt: "preview",
+                    style: {
+                      width: "48px",
+                      height: "48px",
+                      objectFit: "cover",
+                      borderRadius: "6px",
+                      border: "1px solid var(--border)",
+                    },
+                  }),
+              ),
+              h("input", {
+                className: "form-input",
+                value: f.image_url,
+                onChange: (e) => set("image_url", e.target.value),
+                placeholder: "https://i.ibb.co/...",
+                style: { marginTop: "8px" },
+              }),
+            ),
+          ),
+          h(
+            "div",
+            { className: "form-group" },
+            h("label", { className: "form-label" }, "Título"),
+            h("input", {
+              className: "form-input",
+              value: f.title,
+              onChange: (e) => set("title", e.target.value),
+              placeholder: "Título de la noticia",
+            }),
+          ),
+          h(
+            "div",
+            { className: "form-group" },
+            h("label", { className: "form-label" }, "Contenido"),
+            h("textarea", {
+              className: "form-textarea",
+              value: f.text,
+              onChange: (e) => set("text", e.target.value),
+              placeholder: "Texto de la noticia...",
+            }),
+          ),
+          h(
+            "div",
+            { className: "form-actions" },
+            h(
+              "button",
+              {
+                className: "btn-save",
+                disabled: saving,
+                onClick: () => onSave(f),
+              },
+              saving ? "Guardando..." : "Guardar",
+            ),
+            h(
+              "button",
+              { className: "btn-cancel", disabled: saving, onClick: onCancel },
+              "Cancelar",
+            ),
+          ),
+        );
+      }
 
-  if(error) return h('div',{style:{textAlign:'center',padding:'4rem 1rem',color:'#C9667A',fontSize:'14px'}},
-    h('div',{style:{fontSize:'2rem',marginBottom:'1rem'}},'⚠️'),
-    error
-  );
-  if(!data) return h('div',null,h('style',null,'@keyframes spin{to{transform:rotate(360deg)}}'),h(Spinner));
+      // ── ADMIN PANEL ───────────────────────────────────────────────
+      function Admin({ data, setData, setPage }) {
+        const {
+          products,
+          news,
+          whatsappNumber = "",
+          categories = [],
+          hero = {},
+        } = data;
+        const [whatsapp, setWhatsapp] = useState(whatsappNumber || "");
+        const [heroData, setHeroData] = useState(hero || DEFAULT_HERO);
+        const [categoriesData, setCategoriesData] = useState(categories || []);
+        const [tab, setTab] = useState("products");
+        const [editP, setEditP] = useState(null);
+        const [editN, setEditN] = useState(null);
+        const [editC, setEditC] = useState(null);
+        const [showFormP, setShowFormP] = useState(false);
+        const [showFormN, setShowFormN] = useState(false);
+        const [showFormC, setShowFormC] = useState(false);
+        const [saving, setSaving] = useState(false);
+        const [toast, setToast] = useState("");
+        useEffect(() => {
+          setWhatsapp(whatsappNumber || "");
+          setHeroData(hero || DEFAULT_HERO);
+          setCategoriesData(categories || []);
+        }, [whatsappNumber, hero, categories]);
 
-  if(page==='login') return h(Login,{setPage});
-  if(page==='admin') return h(Admin,{data,setData,setPage});
-  return h(PublicSite,{products:data.products||[],news:data.news||[],whatsappNumber:data.whatsappNumber||DEFAULT_WHATSAPP,hero:data.hero||DEFAULT_HERO,setPage,categories:data.categories||[]});
-}
+        const showToast = (msg) => {
+          setToast(msg);
+          setTimeout(() => setToast(""), 2400);
+        };
 
-ReactDOM.createRoot(document.getElementById('app')).render(h(App));
-</script>
-</body>
+        // Wrapper genérico: ejecuta fn async, maneja saving/error
+        const withSaving = async (fn) => {
+          setSaving(true);
+          try {
+            await fn();
+          } catch (e) {
+            showToast(
+              "❌ Error al guardar: " + (e?.message || "Revisa tu conexión."),
+            );
+          } finally {
+            setSaving(false);
+          }
+        };
+
+        const saveWhatsapp = async () => {
+          if (!whatsapp.trim()) {
+            showToast("⚠ Ingresa un número de WhatsApp");
+            return;
+          }
+          await withSaving(async () => {
+            await saveConfig("whatsapp_number", whatsapp.trim());
+            setData((d) => ({ ...d, whatsappNumber: whatsapp.trim() }));
+            showToast("✓ Número de WhatsApp guardado");
+          });
+        };
+
+        const saveHero = async () => {
+          if (!heroData.tag.trim()) {
+            showToast("⚠ La etiqueta superior es requerida");
+            return;
+          }
+          if (!heroData.title.trim()) {
+            showToast("⚠ El título es requerido");
+            return;
+          }
+          if (!heroData.subtitle.trim()) {
+            showToast("⚠ El subtítulo es requerido");
+            return;
+          }
+          const validFloats = heroData.floats.filter(
+            (f) => f.icon && f.text.trim(),
+          );
+          if (validFloats.length === 0) {
+            showToast(
+              "⚠ Al menos un elemento destacado debe tener icono y texto",
+            );
+            return;
+          }
+          await withSaving(async () => {
+            await saveConfig("hero", heroData);
+            setData((d) => ({ ...d, hero: heroData }));
+            showToast(
+              "✓ Sección Hero actualizada (" +
+                validFloats.length +
+                " elementos)",
+            );
+          });
+        };
+
+        const updateHeroFloat = (index, field, value) => {
+          const newFloats = [...heroData.floats];
+          newFloats[index] = { ...newFloats[index], [field]: value };
+          setHeroData({ ...heroData, floats: newFloats });
+        };
+
+        const addHeroFloat = () => {
+          if (heroData.floats.length >= 6) return; // máximo 6 elementos
+          const newFloats = [
+            ...heroData.floats,
+            { icon: "sparkles", text: "", color: "#F5DCE1" },
+          ];
+          setHeroData({ ...heroData, floats: newFloats });
+        };
+
+        const removeHeroFloat = (index) => {
+          if (heroData.floats.length <= 1) return; // mínimo 1 elemento
+          const newFloats = heroData.floats.filter((_, i) => i !== index);
+          setHeroData({ ...heroData, floats: newFloats });
+        };
+
+        const saveProduct = async (f) => {
+          if (!f.name || !f.price) {
+            showToast("⚠ Completa nombre y precio");
+            return;
+          }
+          await withSaving(async () => {
+            const saved = await saveItem("products", f);
+            const savedItem = f.id ? f : { ...f, id: saved?.id };
+            setData((d) => ({
+              ...d,
+              products: f.id
+                ? d.products.map((p) => (p.id === f.id ? savedItem : p))
+                : [...d.products, savedItem],
+            }));
+            showToast(f.id ? "✓ Producto actualizado" : "✓ Producto agregado");
+            setEditP(null);
+            setShowFormP(false);
+          });
+        };
+
+        const delProduct = async (id) => {
+          if (!confirm("¿Eliminar este producto?")) return;
+          await withSaving(async () => {
+            await saveItem("products", { id }, "delete");
+            setData((d) => ({
+              ...d,
+              products: d.products.filter((p) => p.id !== id),
+            }));
+            showToast("Producto eliminado");
+          });
+        };
+
+        const saveNews = async (f) => {
+          if (!f.title) {
+            showToast("⚠ El título es requerido");
+            return;
+          }
+          await withSaving(async () => {
+            const saved = await saveItem("news", f);
+            const savedItem = f.id ? f : { ...f, id: saved?.id };
+            setData((d) => ({
+              ...d,
+              news: f.id
+                ? d.news.map((n) => (n.id === f.id ? savedItem : n))
+                : [savedItem, ...d.news],
+            }));
+            showToast(f.id ? "✓ Noticia actualizada" : "✓ Noticia publicada");
+            setEditN(null);
+            setShowFormN(false);
+          });
+        };
+
+        const delNews = async (id) => {
+          if (!confirm("¿Eliminar esta noticia?")) return;
+          await withSaving(async () => {
+            await saveItem("news", { id }, "delete");
+            setData((d) => ({ ...d, news: d.news.filter((n) => n.id !== id) }));
+            showToast("Noticia eliminada");
+          });
+        };
+
+        const closeForm = () => {
+          setEditP(null);
+          setEditN(null);
+          setShowFormP(false);
+          setShowFormN(false);
+          setEditC(null);
+          setShowFormC(false);
+        };
+
+        const saveCategory = async (f) => {
+          if (!f.name) {
+            showToast("⚠ El nombre es requerido");
+            return;
+          }
+          await withSaving(async () => {
+            const saved = await saveItem("categories", f);
+            const savedItem = f.id ? f : { ...f, id: saved?.id };
+            setCategoriesData((prev) =>
+              f.id
+                ? prev.map((c) => (c.id === f.id ? savedItem : c))
+                : [...prev, savedItem],
+            );
+            setData((d) => ({
+              ...d,
+              categories: f.id
+                ? d.categories.map((c) => (c.id === f.id ? savedItem : c))
+                : [...d.categories, savedItem],
+            }));
+            showToast(
+              f.id ? "✓ Categoría actualizada" : "✓ Categoría agregada",
+            );
+            setEditC(null);
+            setShowFormC(false);
+          });
+        };
+
+        const delCategory = async (id) => {
+          if (!confirm("¿Eliminar esta categoría?")) return;
+          await withSaving(async () => {
+            await saveItem("categories", { id }, "delete");
+            setCategoriesData((prev) => prev.filter((c) => c.id !== id));
+            setData((d) => ({
+              ...d,
+              categories: d.categories.filter((c) => c.id !== id),
+            }));
+            showToast("Categoría eliminada");
+          });
+        };
+
+        return h(
+          "div",
+          null,
+          h("style", null, `@keyframes spin{to{transform:rotate(360deg)}}`),
+          h(
+            "nav",
+            null,
+            h(
+              "div",
+              { className: "nav-inner" },
+              h(
+                "div",
+                { className: "nav-logo" },
+                "Sweet",
+                h("span", null, " Eden"),
+              ),
+              h(
+                "div",
+                { className: "nav-links" },
+                h(
+                  "button",
+                  { className: "nav-btn", onClick: () => setPage("home") },
+                  "← Ver sitio",
+                ),
+              ),
+            ),
+          ),
+          h(
+            "div",
+            { className: "admin-wrap" },
+            h(
+              "div",
+              { className: "admin-header" },
+              h("div", { className: "admin-title" }, "Panel Admin"),
+              tab === "products" || tab === "news"
+                ? h(
+                    "button",
+                    {
+                      className: "btn-save",
+                      disabled: saving,
+                      onClick: () => {
+                        closeForm();
+                        tab === "products"
+                          ? setShowFormP(true)
+                          : setShowFormN(true);
+                      },
+                    },
+                    "+" + (tab === "products" ? " Producto" : " Noticia"),
+                  )
+                : null,
+            ),
+            h(
+              "div",
+              { className: "admin-tabs" },
+              h(
+                "button",
+                {
+                  className:
+                    "admin-tab" + (tab === "products" ? " active" : ""),
+                  onClick: () => {
+                    setTab("products");
+                    closeForm();
+                  },
+                },
+                "Productos (" + products.length + ")",
+              ),
+              h(
+                "button",
+                {
+                  className: "admin-tab" + (tab === "news" ? " active" : ""),
+                  onClick: () => {
+                    setTab("news");
+                    closeForm();
+                  },
+                },
+                "Noticias (" + news.length + ")",
+              ),
+              h(
+                "button",
+                {
+                  className:
+                    "admin-tab" + (tab === "settings" ? " active" : ""),
+                  onClick: () => {
+                    setTab("settings");
+                    closeForm();
+                  },
+                },
+                "Configuración",
+              ),
+            ),
+
+            tab === "products" &&
+              h(
+                "div",
+                null,
+                (showFormP || editP) &&
+                  h(
+                    "div",
+                    {
+                      style: {
+                        background: "var(--white)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--radius)",
+                        padding: "1.25rem",
+                        marginBottom: "1.25rem",
+                      },
+                    },
+                    h(
+                      "div",
+                      {
+                        style: {
+                          fontSize: "14px",
+                          fontWeight: "500",
+                          color: "var(--warm)",
+                          marginBottom: "1rem",
+                        },
+                      },
+                      editP ? "Editar producto" : "Nuevo producto",
+                    ),
+                    h(ProductForm, {
+                      item: editP,
+                      onSave: saveProduct,
+                      onCancel: closeForm,
+                      saving,
+                      categories: categoriesData,
+                    }),
+                  ),
+                h(
+                  "div",
+                  { className: "admin-list" },
+                  products.length === 0 &&
+                    h(
+                      "div",
+                      { className: "empty" },
+                      h(
+                        "div",
+                        { className: "empty-icon" },
+                        h(Icon, {
+                          name: "cake",
+                          style: { width: "48px", height: "48px" },
+                        }),
+                      ),
+                      h(
+                        "div",
+                        { className: "empty-text" },
+                        "Sin productos aún",
+                      ),
+                    ),
+                  products.map((p) =>
+                    h(
+                      "div",
+                      { key: p.id, className: "admin-item" },
+                      h(
+                        "div",
+                        { className: "admin-item-emoji" },
+                        p.image_url
+                          ? h("img", {
+                              src: p.image_url,
+                              style: {
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                                borderRadius: "6px",
+                              },
+                              onError: (e) => {
+                                e.target.style.display = "none";
+                              },
+                            })
+                          : h(Icon, {
+                              name: "cake",
+                              style: { width: "24px", height: "24px" },
+                            }),
+                      ),
+                      h(
+                        "div",
+                        { className: "admin-item-info" },
+                        h("div", { className: "admin-item-name" }, p.name),
+                        h(
+                          "div",
+                          { className: "admin-item-sub" },
+                          p.category +
+                            (p.featured ? " · ★ Favorito" : "") +
+                            (p.soldOut ? " · Agotado" : ""),
+                        ),
+                      ),
+                      h(
+                        "div",
+                        { className: "admin-item-price" },
+                        "$" + p.price,
+                      ),
+                      h(
+                        "div",
+                        { className: "admin-actions" },
+                        h(
+                          "button",
+                          {
+                            className: "btn-edit",
+                            disabled: saving,
+                            onClick: () => {
+                              setEditP(p);
+                              setShowFormP(true);
+                            },
+                          },
+                          "Editar",
+                        ),
+                        h(
+                          "button",
+                          {
+                            className: "btn-del",
+                            disabled: saving,
+                            onClick: () => delProduct(p.id),
+                          },
+                          "✕",
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+            tab === "news" &&
+              h(
+                "div",
+                null,
+                (showFormN || editN) &&
+                  h(
+                    "div",
+                    {
+                      style: {
+                        background: "var(--white)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--radius)",
+                        padding: "1.25rem",
+                        marginBottom: "1.25rem",
+                      },
+                    },
+                    h(
+                      "div",
+                      {
+                        style: {
+                          fontSize: "14px",
+                          fontWeight: "500",
+                          color: "var(--warm)",
+                          marginBottom: "1rem",
+                        },
+                      },
+                      editN ? "Editar noticia" : "Nueva noticia",
+                    ),
+                    h(NewsForm, {
+                      item: editN,
+                      onSave: saveNews,
+                      onCancel: closeForm,
+                      saving,
+                    }),
+                  ),
+                h(
+                  "div",
+                  { className: "admin-list" },
+                  news.length === 0 &&
+                    h(
+                      "div",
+                      { className: "empty" },
+                      h(
+                        "div",
+                        { className: "empty-icon" },
+                        h(Icon, {
+                          name: "document",
+                          style: { width: "48px", height: "48px" },
+                        }),
+                      ),
+                      h("div", { className: "empty-text" }, "Sin noticias aún"),
+                    ),
+                  news.map((n) =>
+                    h(
+                      "div",
+                      { key: n.id, className: "admin-item" },
+                      h(
+                        "div",
+                        { className: "admin-item-emoji" },
+                        h(Icon, {
+                          name: "document",
+                          style: { width: "20px", height: "20px" },
+                        }),
+                      ),
+                      h(
+                        "div",
+                        { className: "admin-item-info" },
+                        h("div", { className: "admin-item-name" }, n.title),
+                        h(
+                          "div",
+                          { className: "admin-item-sub" },
+                          formatDate(n.date),
+                        ),
+                      ),
+                      h(
+                        "div",
+                        { className: "admin-actions" },
+                        h(
+                          "button",
+                          {
+                            className: "btn-edit",
+                            disabled: saving,
+                            onClick: () => {
+                              setEditN(n);
+                              setShowFormN(true);
+                            },
+                          },
+                          "Editar",
+                        ),
+                        h(
+                          "button",
+                          {
+                            className: "btn-del",
+                            disabled: saving,
+                            onClick: () => delNews(n.id),
+                          },
+                          "✕",
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+            tab === "settings" &&
+              h(
+                "div",
+                null,
+                h(
+                  "div",
+                  {
+                    style: {
+                      background: "var(--white)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--radius)",
+                      padding: "1.25rem",
+                      marginBottom: "1.25rem",
+                    },
+                  },
+                  h(
+                    "div",
+                    {
+                      style: {
+                        fontSize: "14px",
+                        fontWeight: "500",
+                        color: "var(--warm)",
+                        marginBottom: "1rem",
+                      },
+                    },
+                    "Configuración de Contacto",
+                  ),
+                  h(
+                    "div",
+                    { className: "form-group" },
+                    h(
+                      "label",
+                      { className: "form-label" },
+                      "Número de WhatsApp",
+                    ),
+                    h("input", {
+                      className: "form-input",
+                      value: whatsapp,
+                      onChange: (e) => setWhatsapp(e.target.value),
+                      placeholder: "Ej. 18291234567 (sin espacios ni símbolos)",
+                    }),
+                  ),
+                  h(
+                    "div",
+                    {
+                      style: {
+                        fontSize: "12px",
+                        color: "var(--gray)",
+                        marginTop: "4px",
+                      },
+                    },
+                    'Este número se usará para los botones "Pedir por WhatsApp"',
+                  ),
+                  h(
+                    "div",
+                    { className: "form-actions" },
+                    h(
+                      "button",
+                      {
+                        className: "btn-save",
+                        disabled: saving,
+                        onClick: saveWhatsapp,
+                      },
+                      saving ? "Guardando..." : "Guardar número",
+                    ),
+                  ),
+                ),
+                h(
+                  "div",
+                  {
+                    style: {
+                      background: "var(--white)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--radius)",
+                      padding: "1.25rem",
+                      marginBottom: "1.25rem",
+                    },
+                  },
+                  h(
+                    "div",
+                    {
+                      style: {
+                        fontSize: "14px",
+                        fontWeight: "500",
+                        color: "var(--warm)",
+                        marginBottom: "1rem",
+                      },
+                    },
+                    "Sección Hero",
+                  ),
+                  h(
+                    "div",
+                    { className: "form-group" },
+                    h(
+                      "label",
+                      { className: "form-label" },
+                      "Etiqueta superior ",
+                      h("span", { style: { color: "var(--rose)" } }, "*"),
+                    ),
+                    h("input", {
+                      className: "form-input",
+                      value: heroData.tag,
+                      onChange: (e) =>
+                        setHeroData({ ...heroData, tag: e.target.value }),
+                      placeholder: "Ej. Dulcería artesanal ✦ Hecho con amor",
+                    }),
+                  ),
+                  h(
+                    "div",
+                    { className: "form-group" },
+                    h(
+                      "label",
+                      { className: "form-label" },
+                      "Título principal ",
+                      h("span", { style: { color: "var(--rose)" } }, "*"),
+                    ),
+                    h(
+                      "div",
+                      {
+                        style: {
+                          display: "flex",
+                          gap: "8px",
+                          alignItems: "flex-end",
+                        },
+                      },
+                      h("input", {
+                        className: "form-input",
+                        value: heroData.title,
+                        onChange: (e) =>
+                          setHeroData({ ...heroData, title: e.target.value }),
+                        placeholder: "Ej. Donde cada dulce es una obra de arte",
+                        style: { flex: 1 },
+                      }),
+                      h(
+                        "div",
+                        {
+                          style: {
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "4px",
+                          },
+                        },
+                        h(
+                          "label",
+                          { style: { fontSize: "11px", color: "var(--gray)" } },
+                          "Color",
+                        ),
+                        h("input", {
+                          className: "form-input",
+                          type: "color",
+                          value: heroData.titleColor || "#3D2B1F",
+                          onChange: (e) =>
+                            setHeroData({
+                              ...heroData,
+                              titleColor: e.target.value,
+                            }),
+                          style: {
+                            width: "50px",
+                            height: "36px",
+                            padding: "2px",
+                            cursor: "pointer",
+                          },
+                        }),
+                      ),
+                    ),
+                  ),
+                  h(
+                    "div",
+                    { className: "form-group" },
+                    h(
+                      "label",
+                      { className: "form-label" },
+                      "Subtítulo descriptivo ",
+                      h("span", { style: { color: "var(--rose)" } }, "*"),
+                    ),
+                    h("textarea", {
+                      className: "form-textarea",
+                      value: heroData.subtitle,
+                      onChange: (e) =>
+                        setHeroData({ ...heroData, subtitle: e.target.value }),
+                      placeholder: "Describe tu negocio y lo que ofreces...",
+                      rows: 3,
+                    }),
+                  ),
+                  h(
+                    "div",
+                    { style: { marginTop: "1.5rem", marginBottom: "1rem" } },
+                    h(
+                      "div",
+                      {
+                        style: {
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          marginBottom: "0.75rem",
+                        },
+                      },
+                      h(
+                        "label",
+                        {
+                          className: "form-label",
+                          style: { marginBottom: "0" },
+                        },
+                        "Elementos destacados (" + heroData.floats.length + ")",
+                      ),
+                      h(
+                        "div",
+                        { style: { display: "flex", gap: "6px" } },
+                        h(
+                          "button",
+                          {
+                            className: "btn-save",
+                            disabled: heroData.floats.length >= 6,
+                            onClick: addHeroFloat,
+                            style: { padding: "6px 12px", fontSize: "12px" },
+                          },
+                          "+ Añadir",
+                        ),
+                      ),
+                    ),
+                    heroData.floats.map((f, i) =>
+                      h(
+                        "div",
+                        {
+                          key: i,
+                          style: {
+                            border: "1px solid var(--border)",
+                            borderRadius: "6px",
+                            padding: "12px",
+                            marginBottom: "12px",
+                            background: "var(--cream)",
+                          },
+                        },
+                        h(
+                          "div",
+                          {
+                            style: {
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              marginBottom: "8px",
+                            },
+                          },
+                          h(
+                            "div",
+                            {
+                              style: {
+                                fontSize: "12px",
+                                fontWeight: "500",
+                                color: "var(--warm-mid)",
+                              },
+                            },
+                            "Elemento " + (i + 1),
+                          ),
+                          h(
+                            "button",
+                            {
+                              className: "btn-del",
+                              onClick: () => removeHeroFloat(i),
+                              style: { padding: "4px 8px", fontSize: "11px" },
+                              title: "Eliminar este elemento",
+                            },
+                            "×",
+                          ),
+                        ),
+                        h(
+                          "div",
+                          {
+                            style: {
+                              display: "flex",
+                              gap: "8px",
+                              alignItems: "center",
+                            },
+                          },
+                          h(
+                            "div",
+                            {
+                              style: {
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "4px",
+                              },
+                            },
+                            h(
+                              "label",
+                              {
+                                style: {
+                                  fontSize: "11px",
+                                  color: "var(--gray)",
+                                },
+                              },
+                              "Icono",
+                            ),
+                            h(
+                              "select",
+                              {
+                                className: "form-select",
+                                value: f.icon,
+                                onChange: (e) =>
+                                  updateHeroFloat(i, "icon", e.target.value),
+                                style: { width: "110px", fontSize: "12px" },
+                              },
+                              h("option", { value: "" }, "Seleccionar"),
+                              h("option", { value: "truck" }, "🚚 Entrega"),
+                              h("option", { value: "gift" }, "🎁 Regalo"),
+                              h(
+                                "option",
+                                { value: "sparkles" },
+                                "✨ Artesanal",
+                              ),
+                              h("option", { value: "cake" }, "🍰 Pastelería"),
+                              h("option", { value: "document" }, "📄 Calidad"),
+                              h("option", { value: "tag" }, "🏷️ Etiqueta"),
+                            ),
+                          ),
+                          h(
+                            "div",
+                            {
+                              style: {
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "4px",
+                                flex: 1,
+                              },
+                            },
+                            h(
+                              "label",
+                              {
+                                style: {
+                                  fontSize: "11px",
+                                  color: "var(--gray)",
+                                },
+                              },
+                              "Texto",
+                            ),
+                            h("input", {
+                              className: "form-input",
+                              value: f.text,
+                              onChange: (e) =>
+                                updateHeroFloat(i, "text", e.target.value),
+                              placeholder:
+                                [
+                                  "Entrega a domicilio",
+                                  "Pedidos personalizados",
+                                  "100% artesanal",
+                                  "Servicio express",
+                                  "Calidad premium",
+                                  "Atención personalizada",
+                                ][i] || "Texto descriptivo",
+                              style: { fontSize: "13px" },
+                            }),
+                          ),
+                          h(
+                            "div",
+                            {
+                              style: {
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "4px",
+                              },
+                            },
+                            h(
+                              "label",
+                              {
+                                style: {
+                                  fontSize: "11px",
+                                  color: "var(--gray)",
+                                },
+                              },
+                              "Color",
+                            ),
+                            h("input", {
+                              className: "form-input",
+                              type: "color",
+                              value: f.color,
+                              onChange: (e) =>
+                                updateHeroFloat(i, "color", e.target.value),
+                              style: {
+                                width: "50px",
+                                height: "36px",
+                                padding: "2px",
+                                cursor: "pointer",
+                              },
+                            }),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  h(
+                    "div",
+                    { className: "form-actions" },
+                    h(
+                      "button",
+                      {
+                        className: "btn-save",
+                        disabled: saving,
+                        onClick: saveHero,
+                      },
+                      saving ? "Guardando..." : "Guardar cambios del Hero",
+                    ),
+                  ),
+                  h(
+                    "div",
+                    {
+                      style: {
+                        fontSize: "12px",
+                        color: "var(--gray)",
+                        marginTop: "8px",
+                      },
+                    },
+                    "Los cambios se aplicarán inmediatamente al sitio público. Puedes añadir hasta 6 elementos destacados.",
+                  ),
+                ),
+                h(
+                  "div",
+                  {
+                    style: {
+                      background: "var(--white)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--radius)",
+                      padding: "1.25rem",
+                      marginBottom: "1.25rem",
+                    },
+                  },
+                  h(
+                    "div",
+                    {
+                      style: {
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        marginBottom: "1rem",
+                      },
+                    },
+                    h(
+                      "div",
+                      {
+                        style: {
+                          fontSize: "14px",
+                          fontWeight: "500",
+                          color: "var(--warm)",
+                        },
+                      },
+                      "Categorías de Productos",
+                    ),
+                    h(
+                      "button",
+                      {
+                        className: "btn-save",
+                        disabled: saving,
+                        onClick: () => {
+                          closeForm();
+                          setShowFormC(true);
+                        },
+                      },
+                      saving ? "..." : "+ Añadir",
+                    ),
+                  ),
+                  (showFormC || editC) &&
+                    h(
+                      "div",
+                      {
+                        style: {
+                          background: "var(--white)",
+                          border: "1px solid var(--border)",
+                          borderRadius: "var(--radius)",
+                          padding: "1.25rem",
+                          marginBottom: "1.25rem",
+                        },
+                      },
+                      h(
+                        "div",
+                        {
+                          style: {
+                            fontSize: "14px",
+                            fontWeight: "500",
+                            color: "var(--warm)",
+                            marginBottom: "1rem",
+                          },
+                        },
+                        editC ? "Editar categoría" : "Nueva categoría",
+                      ),
+                      h(
+                        "div",
+                        { className: "form-group" },
+                        h(
+                          "label",
+                          { className: "form-label" },
+                          "Nombre de la categoría ",
+                          h("span", { style: { color: "var(--rose)" } }, "*"),
+                        ),
+                        h("input", {
+                          className: "form-input",
+                          value: (editC || { name: "" }).name,
+                          onChange: (e) =>
+                            setEditC({
+                              ...(editC || { name: "" }),
+                              name: e.target.value,
+                            }),
+                          placeholder: "Ej. Galletas, Donas, Cupcakes...",
+                        }),
+                      ),
+                      h(
+                        "div",
+                        { className: "form-actions" },
+                        h(
+                          "button",
+                          {
+                            className: "btn-save",
+                            disabled: saving,
+                            onClick: () => saveCategory(editC || { name: "" }),
+                          },
+                          saving ? "Guardando..." : "Guardar categoría",
+                        ),
+                        h(
+                          "button",
+                          { className: "btn-cancel", onClick: closeForm },
+                          "Cancelar",
+                        ),
+                      ),
+                    ),
+                  h(
+                    "div",
+                    { className: "admin-list" },
+                    categoriesData.length === 0 &&
+                      h(
+                        "div",
+                        { className: "empty" },
+                        h(
+                          "div",
+                          { className: "empty-icon" },
+                          h(Icon, {
+                            name: "tag",
+                            style: { width: "48px", height: "48px" },
+                          }),
+                        ),
+                        h(
+                          "div",
+                          { className: "empty-text" },
+                          "Sin categorías aún",
+                        ),
+                      ),
+                    categoriesData.map((c) =>
+                      h(
+                        "div",
+                        { key: c.id, className: "admin-item" },
+                        h(
+                          "div",
+                          { className: "admin-item-emoji" },
+                          h(Icon, {
+                            name: "tag",
+                            style: { width: "24px", height: "24px" },
+                          }),
+                        ),
+                        h(
+                          "div",
+                          { className: "admin-item-info" },
+                          h("div", { className: "admin-item-name" }, c.name),
+                          h(
+                            "div",
+                            { className: "admin-item-sub" },
+                            "Categoría de productos",
+                          ),
+                        ),
+                        h(
+                          "div",
+                          { className: "admin-actions" },
+                          h(
+                            "button",
+                            {
+                              className: "btn-edit",
+                              disabled: saving,
+                              onClick: () => {
+                                setEditC(c);
+                                setShowFormC(true);
+                              },
+                            },
+                            "Editar",
+                          ),
+                          h(
+                            "button",
+                            {
+                              className: "btn-del",
+                              disabled: saving,
+                              onClick: () => delCategory(c.id),
+                            },
+                            "✕",
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ),
+          toast && h(Toast, { msg: toast, onDone: () => setToast("") }),
+        );
+      }
+
+      // ── ROOT APP ──────────────────────────────────────────────────
+      function App() {
+        const [page, setPage] = useState("home");
+        const [data, setData] = useState(null); // null = cargando
+        const [error, setError] = useState("");
+
+        useEffect(() => {
+          loadData()
+            .then((d) =>
+              setData({
+                whatsappNumber: DEFAULT_WHATSAPP,
+                products: [],
+                news: [],
+                categories: [],
+                hero: DEFAULT_HERO,
+                ...d,
+              }),
+            )
+            .catch(() => setError("No se pudo conectar con la base de datos."));
+        }, []);
+
+        if (error)
+          return h(
+            "div",
+            {
+              style: {
+                textAlign: "center",
+                padding: "4rem 1rem",
+                color: "#C9667A",
+                fontSize: "14px",
+              },
+            },
+            h(
+              "div",
+              { style: { fontSize: "2rem", marginBottom: "1rem" } },
+              "⚠️",
+            ),
+            error,
+          );
+        if (!data)
+          return h(
+            "div",
+            null,
+            h("style", null, "@keyframes spin{to{transform:rotate(360deg)}}"),
+            h(Spinner),
+          );
+
+        if (page === "login") return h(Login, { setPage });
+        if (page === "admin") return h(Admin, { data, setData, setPage });
+        return h(PublicSite, {
+          products: data.products || [],
+          news: data.news || [],
+          whatsappNumber: data.whatsappNumber || DEFAULT_WHATSAPP,
+          hero: data.hero || DEFAULT_HERO,
+          setPage,
+          categories: data.categories || [],
+        });
+      }
+      // ── ImgBB upload callback ─────────────────────────────────────
+      window.imgbb_upload_callback = function (json) {
+        if (json && json.data && json.data.url) {
+          // Copia la URL al portapapeles
+          const url = json.data.display_url || json.data.url;
+          navigator.clipboard.writeText(url).catch(() => {});
+          // Rellena automáticamente el input visible más cercano
+          const inputs = document.querySelectorAll(
+            '.form-input[placeholder*="ibb.co"]',
+          );
+          const active = document.activeElement;
+          // Intenta encontrar el input del formulario activo
+          let target = null;
+          if (active && active.closest) {
+            target = active
+              .closest("div")
+              ?.querySelector('.form-input[placeholder*="ibb.co"]');
+          }
+          if (!target && inputs.length > 0) target = inputs[inputs.length - 1];
+          if (target) {
+            target.value = url;
+            target.dispatchEvent(new Event("input", { bubbles: true }));
+          }
+        }
+      };
+      ReactDOM.createRoot(document.getElementById("app")).render(h(App));
+    </script>
+  </body>
 </html>
